@@ -6,6 +6,7 @@ import os
 import streamlit as st
 import qrcode
 import requests
+import unicodedata
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║  SISTEMA DE BANCO DE DADOS LOCAL (IMUNIZADO CONTRA REFRESH)  ║
@@ -22,7 +23,7 @@ def _catalogo_padrao() -> dict:
             "nome_casal": "Sara & Luis",
             "nome_beneficiario": "SARA E LUIS",
             "cidade": "SAO PAULO",
-            "mp_access_token": ""  # Token do Mercado Pago armazenado aqui
+            "mp_access_token": ""
         },
         "itens": []
     }
@@ -32,7 +33,6 @@ def carregar_dados() -> dict:
         try:
             with open(ARQUIVO_BANCO, "r", encoding="utf-8") as f:
                 dados = json.load(f)
-                # Garante compatibilidade caso o campo novo não exista no arquivo antigo
                 if "mp_access_token" not in dados["config"]:
                     dados["config"]["mp_access_token"] = ""
                 st.session_state["db_catalogo"] = dados
@@ -52,8 +52,16 @@ def salvar_dados(dados: dict) -> None:
     with open(ARQUIVO_BANCO, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=4)
 
+def remover_acentos(texto: str) -> str:
+    """ Remove acentos e caracteres especiais para blindar o Pix e IDs """
+    if not texto:
+        return ""
+    nfkd_form = unicodedata.normalize('NFKD', texto)
+    return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
 def gerar_id(nome: str) -> str:
-    slug = re.sub(r"[^\w\s-]", "", nome.lower())
+    nome_limpo = remover_acentos(nome.lower())
+    slug = re.sub(r"[^\w\s-]", "", nome_limpo)
     slug = re.sub(r"[\s_]+", "-", slug).strip("-")
     import time
     return f"{slug}-{int(time.time())}"
@@ -72,10 +80,13 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
         "Content-Type": "application/json"
     }
     
+    # Remove acentos do título do item enviado ao Mercado Pago para evitar rejeições
+    titulo_produto = remover_acentos(f"Presente: {item['emoji']} {item['nome']}")
+    
     payload = {
         "items": [
             {
-                "title": f"Presente: {item['emoji']} {item['nome']}",
+                "title": titulo_produto,
                 "quantity": 1,
                 "currency_id": "BRL",
                 "unit_price": float(item["preco"])
@@ -83,10 +94,10 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
         ],
         "payment_methods": {
             "excluded_payment_types": [
-                {"id": "ticket"},        # Desativa Boleto
-                {"id": "bank_transfer"}  # Desativa Pix do MP (já usamos o seu direto)
+                {"id": "ticket"},        
+                {"id": "bank_transfer"}  
             ],
-            "installments": 12           # Permite parcelamento em até 12x
+            "installments": 12           
         },
         "auto_return": "approved"
     }
@@ -100,7 +111,7 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
     return None
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  QR CODE PIX NATIVO                                          ║
+# ║  QR CODE PIX NATIVO (IMUNIZADO CONTRA ACENTOS)               ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 def _tlv(tag: str, valor: str) -> str:
@@ -119,9 +130,15 @@ def _crc16_ccitt(payload: str) -> str:
     return f"{crc:04X}"
 
 def gerar_payload_pix(chave: str, nome_beneficiario: str, cidade: str, valor: float, descricao: str) -> str:
+    # Passa todos os textos pelo filtro limpador de acentos antes de montar a estrutura
+    chave_limpa = remover_acentos(chave)
+    nome_limpo = remover_acentos(nome_beneficiario[:25]).upper()
+    cidade_limpa = remover_acentos(cidade[:15]).upper()
+    desc_limpa = remover_acentos(descricao[:25])
+
     gui = _tlv("00", "BR.GOV.BCB.PIX")
-    chave_field = _tlv("01", chave)
-    desc_field = _tlv("02", descricao[:25])
+    chave_field = _tlv("01", chave_limpa)
+    desc_field = _tlv("02", desc_limpa)
     mai = _tlv("26", gui + chave_field + desc_field)
 
     payload_parts = [
@@ -135,8 +152,8 @@ def gerar_payload_pix(chave: str, nome_beneficiario: str, cidade: str, valor: fl
 
     payload_parts.extend([
         _tlv("58", "BR"),
-        _tlv("59", nome_beneficiario[:25].upper()),
-        _tlv("60", cidade[:15].upper()), 
+        _tlv("59", nome_limpo),
+        _tlv("60", cidade_limpa), 
         _tlv("62", _tlv("05", "***")),
     ])
     payload_sem_crc = "".join(payload_parts) + "6304"
@@ -155,7 +172,7 @@ dados = carregar_dados()
 config = dados["config"]
 st.set_page_config(page_title=f"Lista {config['nome_casal']}", page_icon="🏠", layout="centered")
 
-# Injeção de CSS Customizado (A Mágica da Borda Infalível)
+# Injeção de CSS Customizado
 estilos_css = (
     "<style>"
     "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { "
@@ -163,7 +180,6 @@ estilos_css = (
     ".stApp { background-color: #F4F7FA !important; color: #2D3748 !important; }"
     "#MainMenu, footer, header { visibility: hidden; }"
     
-    # Painel do Casal
     ".stExpander { border: 2px solid #0B2545 !important; "
     "border-radius: 12px !important; background-color: #ffffff !important; "
     "margin-top: 40px !important; }"
@@ -172,7 +188,6 @@ estilos_css = (
     "div[data-testid='stTabs'] button[aria-selected='true'] { "
     "color: #0B2545 !important; border-bottom: 3px solid #0B2545 !important; }"
     
-    # SELETOR INTELIGENTE: Circula o bloco inteiro que contém o marcador invisível do anúncio
     "div[data-testid='stVerticalBlock']:has(> div.element-container div.anuncio-identificador) { "
     "background-color: #ffffff !important; "
     "border: 2px solid #0B2545 !important; "
@@ -186,7 +201,6 @@ estilos_css = (
     "border-radius: 8px !important; font-weight: 600 !important; width: 100% !important; }"
     "label p { color: #0B2545 !important; font-weight: 600 !important; }"
     
-    # Badges de Status
     ".status-badge { padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; "
     "font-weight: 700; display: inline-block; text-align: center; }"
     ".disponivel { background-color: #EBF8FF !important; color: #2B6CB0 !important; border: 1px solid #BEE3F8 !important; }"
@@ -208,14 +222,14 @@ def modal_presentear(item: dict, config: dict):
     st.markdown(f"<h2 style='color:#F8FAFC; margin-bottom: 4px;'>{item['emoji']} {item['nome']}</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='font-size: 1.2rem; color: #CBD5E1;'>Valor: <strong style='color:#38BDF8; font-size: 1.4rem;'>R$ {item['preco']:.2f}</strong></p>", unsafe_allow_html=True)
     
-    # Geração dos Payloads
+    # Geração Segura dos Payloads
     payload_pix = gerar_payload_pix(
         chave=config["chave_pix"], nome_beneficiario=config["nome_beneficiario"],
         cidade=config["cidade"], valor=item["preco"], descricao=item["id"][:25]
     )
     link_cartao = gerar_link_cartao_mercado_pago(item, config.get("mp_access_token", ""))
     
-    # Interface de Opções
+    # Interface de Opções Dinâmicas
     if link_cartao:
         opcao_pgto = st.radio("Escolha a forma de pagamento:", ["Pix (Imediato)", "Cartão de Crédito (Até 12x)"], horizontal=True)
     else:
@@ -274,7 +288,6 @@ else:
         if status_atual == "disponivel":
             status_atual = "Ainda disponível :("
 
-        # Estrutura do Card protegida por marcador CSS
         with st.container():
             st.markdown('<div class="anuncio-identificador"></div>', unsafe_allow_html=True)
             cols_item = st.columns([1.1, 2, 1])
@@ -377,7 +390,7 @@ with admin_panel:
                 c_chave = st.text_input("Chave Pix:", value=config["chave_pix"])
                 c_nome = st.text_input("Beneficiário:", value=config["nome_beneficiario"])
                 c_cidade = st.text_input("Cidade:", value=config["cidade"])
-                c_token = st.text_input("Mercado Pago Access Token (Opcional):", value=config.get("mp_access_token", ""), type="password", help="Cole o seu Access Token de produção do Mercado Pago para ativar a opção de cartão de crédito.")
+                c_token = st.text_input("Mercado Pago Access Token (Opcional):", value=config.get("mp_access_token", ""), type="password", help="Cole o seu Access Token de produção do Mercado Pago.")
                 
                 if st.form_submit_button("Salvar Config."):
                     dados["config"]["nome_casal"] = c_casal
