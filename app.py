@@ -26,7 +26,6 @@ def _catalogo_padrao() -> dict:
     }
 
 def carregar_dados() -> dict:
-    # Se o arquivo físico existir no servidor, lê dele
     if os.path.exists(ARQUIVO_BANCO):
         try:
             with open(ARQUIVO_BANCO, "r", encoding="utf-8") as f:
@@ -36,7 +35,6 @@ def carregar_dados() -> dict:
         except Exception:
             pass
             
-    # Se não existir ou falhar, usa o padrão/estado atual
     if "db_catalogo" not in st.session_state:
         st.session_state["db_catalogo"] = _catalogo_padrao()
         with open(ARQUIVO_BANCO, "w", encoding="utf-8") as f:
@@ -46,7 +44,6 @@ def carregar_dados() -> dict:
 
 def salvar_dados(dados: dict) -> None:
     st.session_state["db_catalogo"] = dados
-    # Grava diretamente no arquivo para persistir mesmo após refresh
     with open(ARQUIVO_BANCO, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=4)
 
@@ -57,7 +54,7 @@ def gerar_id(nome: str) -> str:
     return f"{slug}-{int(time.time())}"
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  QR CODE PIX (CORRIGIDO)                                     ║
+# ║  QR CODE PIX                                                 ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 def _tlv(tag: str, valor: str) -> str:
@@ -96,7 +93,6 @@ def gerar_payload_pix(
     if valor > 0:
         payload_parts.append(_tlv("54", f"{valor:.2f}"))
 
-    # CORREÇÃO CRÍTICA AQUI: Removido o 'city=' incorreto que causava o TypeError
     payload_parts.extend([
         _tlv("58", "BR"),
         _tlv("59", nome_beneficiario[:25].upper()),
@@ -128,7 +124,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Injeção de CSS para garantir contraste e visibilidade
+# Injeção de CSS customizado
 estilos_css = (
     "<style>"
     "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { "
@@ -150,9 +146,8 @@ estilos_css = (
     "border-radius: 8px !important; font-weight: 600 !important; width: 100% !important; }"
     "label p { color: #0B2545 !important; font-weight: 600 !important; }"
     ".status-badge { padding: 6px 14px; border-radius: 30px; font-size: 0.75rem; "
-    "font-weight: 700; text-transform: uppercase; display: inline-block; }"
+    "font-weight: 700; display: inline-block; }"
     ".disponivel { background-color: #EBF8FF; color: #2B6CB0; }"
-    ".pendente { background-color: #FEFCBF; color: #975A16; }"
     ".confirmado { background-color: #C6F6D5; color: #22543D; }"
     ".img-container img { border-radius: 12px !important; object-fit: cover !important; }"
     "div[role='dialog'] label p { color: #ffffff !important; font-size: 1.05rem !important; font-weight: 700 !important; }"
@@ -210,11 +205,12 @@ def modal_presentear(item: dict, config: dict):
             dados_atuais = carregar_dados()
             for i, it in enumerate(dados_atuais["itens"]):
                 if it["id"] == item["id"]:
-                    dados_atuais["itens"][i]["status"] = "pendente"
+                    # ATUALIZAÇÃO AUTOMÁTICA: Passa direto para o status de sucesso
+                    dados_atuais["itens"][i]["status"] = "Alguém já nos ajudou com esse :)"
                     dados_atuais["itens"][i]["quem"] = quem
                     break
             salvar_dados(dados_atuais)
-            st.success("Obrigado! Seu presente foi avisado aos noivos. 🤍")
+            st.success("Obrigado! Seu presente foi confirmado com sucesso. 🤍")
             st.rerun()
 
 # ╔══════════════════════════════════════════════════════════════╗
@@ -240,6 +236,11 @@ if not itens:
     st.markdown(vazio, unsafe_allow_html=True)
 else:
     for item in itens:
+        # Garante retrocompatibilidade se o status antigo "disponivel" ainda estiver salvo
+        status_atual = item["status"]
+        if status_atual == "disponivel":
+            status_atual = "Ainda disponível :("
+
         with st.container(border=True):
             cols_item = st.columns([1.1, 2, 1])
             
@@ -254,15 +255,13 @@ else:
                 st.markdown(f"<h3>{item['emoji']} {item['nome']}</h3>", unsafe_allow_html=True)
                 st.markdown(f"<span style='font-weight:bold;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
                 
-                if item["status"] == "disponivel":
-                    st.markdown("<br><span class='status-badge disponivel'>Disponível</span>", unsafe_allow_html=True)
-                elif item["status"] == "pendente":
-                    st.markdown(f"<br><span class='status-badge pendente'>Pendente ({item['quem']})</span>", unsafe_allow_html=True)
-                elif item["status"] == "confirmado":
+                if status_atual == "Ainda disponível :(":
+                    st.markdown(f"<br><span class='status-badge disponivel'>{status_atual}</span>", unsafe_allow_html=True)
+                else:
                     st.markdown(f"<br><span class='status-badge confirmado'>De: {item['quem']} 🤍</span>", unsafe_allow_html=True)
             
             with cols_item[2]:
-                if item["status"] == "disponivel":
+                if status_atual == "Ainda disponível :(":
                     if st.button("Presentear", key=f"btn_{item['id']}", use_container_width=True):
                         modal_presentear(item, config)
 
@@ -288,28 +287,31 @@ with admin_panel:
                 for idx, item in enumerate(itens):
                     c_admin = st.columns([2, 1, 2])
                     
+                    status_ajustado = item["status"]
+                    if status_ajustado == "disponivel":
+                        status_ajustado = "Ainda disponível :("
+                        
                     with c_admin[0]:
-                        st.write(f"{item['nome']} (R$ {item['preco']:.2f})")
+                        # EXIBIÇÃO DO COMPRADOR NO PAINEL: Mostra quem deu o presente diretamente
+                        texto_item = f"**{item['nome']}** (R$ {item['preco']:.2f})"
+                        if item.get("quem"):
+                            texto_item += f"  \n🎁 *Presenteado por: {item['quem']}*"
+                        st.markdown(texto_item)
                     
                     with c_admin[1]:
-                        if item["status"] == "pendente":
-                            if st.button("✅ Conf.", key=f"c_{item['id']}"):
-                                dados["itens"][idx]["status"] = "confirmado"
-                                salvar_dados(dados)
-                                st.rerun()
                         if st.button("❌ Rem.", key=f"d_{item['id']}"):
                             dados["itens"].pop(idx)
                             salvar_dados(dados)
                             st.rerun()
                             
                     with c_admin[2]:
-                        opcoes = ["disponivel", "pendente", "confirmado"]
-                        i_padrao = opcoes.index(item["status"]) if item["status"] in opcoes else 0
+                        opcoes = ["Ainda disponível :(", "Alguém já nos ajudou com esse :)"]
+                        i_padrao = opcoes.index(status_ajustado) if status_ajustado in opcoes else 0
                         novo = st.selectbox("Status:", opcoes, index=i_padrao, key=f"s_{item['id']}")
                         
                         if novo != item["status"]:
                             dados["itens"][idx]["status"] = novo
-                            if novo == "disponivel":
+                            if novo == "Ainda disponível :(":
                                 dados["itens"][idx]["quem"] = ""
                             salvar_dados(dados)
                             st.rerun()
@@ -317,7 +319,7 @@ with admin_panel:
         with tab2:
             with st.form(key="form_add", clear_on_submit=True):
                 n_nome = st.text_input("Nome:")
-                n_preco = st.number_input("Preço:", min_value=1.0, value=150.0)
+                n_preco = n_preco = st.number_input("Preço:", min_value=1.0, value=150.0)
                 n_emoji = st.text_input("Emoji:", value="🎁")
                 n_desc = st.text_input("Descrição:")
                 foto = st.file_uploader("Foto:", type=["jpg", "png"])
@@ -334,7 +336,7 @@ with admin_panel:
                             "preco": float(n_preco),
                             "emoji": n_emoji.strip() or "🎁",
                             "desc": n_desc.strip(),
-                            "status": "disponivel",
+                            "status": "Ainda disponível :(",
                             "quem": "",
                             "foto": b64
                         })
