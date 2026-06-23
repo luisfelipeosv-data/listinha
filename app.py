@@ -67,7 +67,7 @@ def gerar_id(nome: str) -> str:
     return f"{slug}-{int(time.time())}"
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  INTEGRAÇÃO MERCADO PAGO (COM DIAGNÓSTICO DE ERROS ATIVO)    ║
+# ║  INTEGRAÇÃO MERCADO PAGO CORRIGIDA (ROTAS ATUALIZADAS)       ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
@@ -75,9 +75,13 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
         st.warning("⚠️ O Token do Mercado Pago está vazio ou não foi carregado corretamente.")
         return None
         
-    url = "https://api.mercadopago.com/v1/preferences"
+    # .strip() limpa espaços ou quebras de linha invisíveis que causam Erro 404
+    token_limpo = access_token.strip()
+    
+    # Rota correta e atualizada da API do Mercado Pago para Checkout Pro
+    url = "https://api.mercadopago.com/checkout/preferences"
     headers = {
-        "Authorization": f"Bearer {access_token.strip()}",
+        "Authorization": f"Bearer {token_limpo}",
         "Content-Type": "application/json"
     }
     
@@ -107,7 +111,7 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
         if response.status_code in [200, 201]:
             return response.json().get("init_point")
         else:
-            # Exibe o erro exato retornado da API do Mercado Pago caso falhe
+            # Mantém a exibição do erro exato caso ocorra outra rejeição interna do MP
             st.error(f"❌ Erro do Mercado Pago (Status {response.status_code}): {response.text}")
     except Exception as e:
         st.error(f"❌ Erro de conexão: {e}")
@@ -156,7 +160,7 @@ def gerar_payload_pix(chave: str, nome_beneficiario: str, cidade: str, valor: fl
     payload_parts.extend([
         _tlv("58", "BR"),
         _tlv("59", nome_limpo),
-        _tlv("60", city_clean := cidade_limpa), 
+        _tlv("60", cidade_limpa), 
         _tlv("62", _tlv("05", "***")),
     ])
     payload_sem_crc = "".join(payload_parts) + "6304"
@@ -225,14 +229,12 @@ def modal_presentear(item: dict, config: dict):
     st.markdown(f"<h2 style='color:#F8FAFC; margin-bottom: 4px;'>{item['emoji']} {item['nome']}</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='font-size: 1.2rem; color: #CBD5E1;'>Valor: <strong style='color:#38BDF8; font-size: 1.4rem;'>R$ {item['preco']:.2f}</strong></p>", unsafe_allow_html=True)
     
-    # Geração dos Payloads com tratamento interno
     payload_pix = gerar_payload_pix(
         chave=config["chave_pix"], nome_beneficiario=config["nome_beneficiario"],
         cidade=config["cidade"], valor=item["preco"], descricao=item["id"][:25]
     )
     link_cartao = gerar_link_cartao_mercado_pago(item, config.get("mp_access_token", ""))
     
-    # Exibição Condicional
     if link_cartao:
         opcao_pgto = st.radio("Escolha a forma de pagamento:", ["Pix (Imediato)", "Cartão de Crédito (Até 12x)"], horizontal=True)
     else:
@@ -402,5 +404,5 @@ with admin_panel:
                     dados["config"]["cidade"] = c_cidade.strip().upper()
                     dados["config"]["mp_access_token"] = c_token.strip()
                     salvar_dados(dados)
-                    st.success("Configurações updated!")
+                    st.success("Configurações atualizadas!")
                     st.rerun()
