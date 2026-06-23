@@ -94,7 +94,7 @@ def gerar_payload_pix(
     payload_parts.extend([
         _tlv("58", "BR"),
         _tlv("59", nome_beneficiario[:25].upper()),
-        _tlv("60", cidade[:15].upper()),
+        _tlv("60", city=cidade[:15].upper()),
         _tlv("62", _tlv("05", "***")),
     ])
     payload_sem_crc = "".join(payload_parts) + "6304"
@@ -122,7 +122,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# CSS concatenado linha a linha para celular não quebrar
+# Estilos CSS com correções estritas para o Modal e fontes visíveis
 estilos_css = (
     "<style>"
     "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { "
@@ -149,20 +149,22 @@ estilos_css = (
     ".pendente { background-color: #FEFCBF; color: #975A16; }"
     ".confirmado { background-color: #C6F6D5; color: #22543D; }"
     ".img-container img { border-radius: 12px !important; object-fit: cover !important; }"
+    "div[role='dialog'] label p { color: #ffffff !important; font-size: 1.05rem !important; font-weight: 700 !important; }"
+    "div[role='dialog'] input { color: #ffffff !important; background-color: #1E293B !important; border: 1px solid #475569 !important; }"
     "</style>"
 )
 st.markdown(estilos_css, unsafe_allow_html=True)
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  MODAL DE PAGAMENTO                                          ║
+# ║  MODAL DE PAGAMENTO CORRIGIDO E IMPECÁVEL                    ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 @st.dialog("🎁 Presentear")
 def modal_presentear(item: dict, config: dict):
-    t_nome = f"<h2 style='color:#0B2545;'>{item['emoji']} {item['nome']}</h2>"
+    t_nome = f"<h2 style='color:#F8FAFC; margin-bottom: 4px;'>{item['emoji']} {item['nome']}</h2>"
     st.markdown(t_nome, unsafe_allow_html=True)
     
-    t_preco = f"<p>Valor: <strong style='color:#0B2545;'>R$ {item['preco']:.2f}</strong></p>"
+    t_preco = f"<p style='font-size: 1.2rem; color: #CBD5E1;'>Valor do Presente: <strong style='color:#38BDF8; font-size: 1.4rem;'>R$ {item['preco']:.2f}</strong></p>"
     st.markdown(t_preco, unsafe_allow_html=True)
     
     payload = gerar_payload_pix(
@@ -173,29 +175,33 @@ def modal_presentear(item: dict, config: dict):
         descricao=item["id"][:25]
     )
     
+    # Texto de instruções limpo, ultra legível e sem box branco problemático
     html_instrucoes = (
-        "<div style='background-color:#F7FAFC; padding:15px; border-radius:10px;'>"
-        "<strong>Como pagar:</strong><br>"
-        "Copie o código abaixo e cole na área PIX do seu banco."
+        "<div style='background-color:#0F172A; padding:16px; border-radius:8px; border: 1px solid #334155; margin-bottom: 20px;'>"
+        "<span style='color:#38BDF8; font-weight:bold; font-size:1.05rem; display:block; margin-bottom:6px;'>Passo a passo para pagar:</span>"
+        "<p style='color:#E2E8F0; margin:4px 0; font-size:0.95rem;'>1. Abra o aplicativo do seu banco de preferência.</p>"
+        "<p style='color:#E2E8F0; margin:4px 0; font-size:0.95rem;'>2. Vá na área Pix e escolha <strong>Ler QR Code</strong> ou <strong>Pix Copia e Cola</strong>.</p>"
         "</div>"
     )
     st.markdown(html_instrucoes, unsafe_allow_html=True)
     
-    # Linha protegida contra quebra
-    colunas = st.columns([1, 1.2])
+    colunas = st.columns([1, 1.3])
     
     with colunas[0]:
-        st.image(gerar_qrcode_pix(payload), width=160)
+        st.image(gerar_qrcode_pix(payload), width=150)
     with colunas[1]:
-        st.markdown("<p><strong>Pix Copia e Cola:</strong></p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#F8FAFC; font-weight:bold; margin-bottom:4px;'>Código Pix Copia e Cola:</p>", unsafe_allow_html=True)
         st.code(payload, language="text")
         
-    st.divider()
-    st.markdown("<h3>Confirme seu Presente</h3>", unsafe_allow_html=True)
+    st.markdown("<hr style='border:0; border-top:1px solid #334155; margin: 20px 0;'>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#F8FAFC; font-size: 1.2rem; margin-bottom:10px;'>Avise os Noivos</h3>", unsafe_allow_html=True)
     
     with st.form(key=f"form_{item['id']}"):
-        nome_convidado = st.text_input("Seu nome completo:")
-        if st.form_submit_button("Já fiz o Pix! Confirmar"):
+        # Label em branco puro garantido pelo CSS injetado acima
+        nome_convidado = st.text_input("Seu nome completo:", placeholder="Digite seu nome aqui...")
+        
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        if st.form_submit_button("✓ Confirme que fez o Pix"):
             quem = nome_convidado.strip() or "Anônimo"
             dados_atuais = carregar_dados()
             for i, it in enumerate(dados_atuais["itens"]):
@@ -204,7 +210,7 @@ def modal_presentear(item: dict, config: dict):
                     dados_atuais["itens"][i]["quem"] = quem
                     break
             salvar_dados(dados_atuais)
-            st.success("Obrigado! Presente registrado. 🤍")
+            st.success("Obrigado! Seu presente foi avisado aos noivos. 🤍")
             st.rerun()
 
 # ╔══════════════════════════════════════════════════════════════╗
