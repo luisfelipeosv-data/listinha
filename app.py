@@ -1,8 +1,3 @@
-"""
-Casinha Sara & Luis — Lista de Presentes Premium 🏠
-Versão Corrigida: Removido String Tripla do CSS para evitar SyntaxError
-"""
-
 import json
 import io
 import re
@@ -57,7 +52,7 @@ def gerar_id(nome: str) -> str:
     return f"{slug}-{int(time.time())}"
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  QR CODE PIX — Payload BR Code                               ║
+# ║  QR CODE PIX E ESTILOS SEGUROS                               ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 def _tlv(tag: str, valor: str) -> str:
@@ -108,32 +103,33 @@ def gerar_qrcode_pix(payload: str) -> bytes:
     img.save(buffer, format="PNG")
     return buffer.getvalue()
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  CONFIGURAÇÃO DA PÁGINA E INJEÇÃO SEGURA DE ESTILO           ║
-# ╚══════════════════════════════════════════════════════════════╝
-
 dados = carregar_dados()
 config = dados["config"]
 st.set_page_config(page_title=f"Lista {config['nome_casal']}", page_icon="🏠", layout="centered")
 
-# Injeção de CSS sem usar aspas triplas (evita que o compilador quebre)
-st.markdown("<style>h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>.stApp { background-color: #F4F7FA !important; color: #2D3748 !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>#MainMenu, footer, header { visibility: hidden; }</style>", unsafe_allow_html=True)
-st.markdown("<style>.stExpander { border: 2px solid #0B2545 !important; border-radius: 12px !important; background-color: #ffffff !important; box-shadow: 0 4px 12px rgba(11, 37, 69, 0.05) !important; margin-top: 20px !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>.stExpander summary p { color: #0B2545 !important; font-weight: 700 !important; font-size: 1.1rem !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>div[data-testid='stTabs'] button { color: #4A5568 !important; font-weight: 600 !important; font-size: 1rem !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>div[data-testid='stTabs'] button[aria-selected='true'] { color: #0B2545 !important; border-bottom: 3px solid #0B2545 !important; font-weight: 700 !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>code, pre { background-color: #F7FAFC !important; color: #0B2545 !important; font-family: monospace !important; font-size: 1rem !important; font-weight: 600 !important; border: 1px solid #CBD5E0 !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>div[data-testid='stVerticalBlockBorderWrapper'] { border-radius: 16px !important; border: 1px solid #E2E8F0 !important; box-shadow: 0 8px 20px rgba(11, 37, 69, 0.03) !important; background-color: #ffffff !important; padding: 24px !important; margin-bottom: 15px !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>div.stButton > button, div.stFormSubmitButton > button { background-color: #0B2545 !important; color: #ffffff !important; border: 1px solid #0B2545 !important; border-radius: 8px !important; padding: 10px 20px !important; font-weight: 600 !important; font-size: 0.95rem !important; width: 100% !important; transition: background 0.2s; }</style>", unsafe_allow_html=True)
-st.markdown("<style>div.stButton > button:hover, div.stFormSubmitButton > button:hover { background-color: #134074 !important; border-color: #134074 !important; color: #ffffff !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>label p { color: #0B2545 !important; font-weight: 600 !important; }</style>", unsafe_allow_html=True)
-st.markdown("<style>.status-badge { padding: 6px 14px; border-radius: 30px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; display: inline-block; margin-top: 8px; }</style>", unsafe_allow_html=True)
-st.markdown("<style>.disponivel { background-color: #EBF8FF; color: #2B6CB0; border: 1px solid #BEE3F8; }</style>", unsafe_allow_html=True)
-st.markdown("<style>.pendente { background-color: #FEFCBF; color: #975A16; border: 1px solid #FEF08A; }</style>", unsafe_allow_html=True)
-st.markdown("<style>.confirmado { background-color: #C6F6D5; color: #22543D; border: 1px solid #9AE6B4; }</style>", unsafe_allow_html=True)
-st.markdown("<style>.img-container img { border-radius: 12px !important; object-fit: cover !important; }</style>", unsafe_allow_html=True)
+# CSS concatenado com parênteses (100% à prova de erro de sintaxe)
+estilos_css = (
+    "<style>"
+    "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important; }"
+    ".stApp { background-color: #F4F7FA !important; color: #2D3748 !important; }"
+    "#MainMenu, footer, header { visibility: hidden; }"
+    ".stExpander { border: 2px solid #0B2545 !important; border-radius: 12px !important; background-color: #ffffff !important; box-shadow: 0 4px 12px rgba(11, 37, 69, 0.05) !important; margin-top: 20px !important; }"
+    ".stExpander summary p { color: #0B2545 !important; font-weight: 700 !important; font-size: 1.1rem !important; }"
+    "div[data-testid='stTabs'] button { color: #4A5568 !important; font-weight: 600 !important; font-size: 1rem !important; }"
+    "div[data-testid='stTabs'] button[aria-selected='true'] { color: #0B2545 !important; border-bottom: 3px solid #0B2545 !important; font-weight: 700 !important; }"
+    "code, pre { background-color: #F7FAFC !important; color: #0B2545 !important; font-family: monospace !important; font-size: 1rem !important; font-weight: 600 !important; border: 1px solid #CBD5E0 !important; }"
+    "div[data-testid='stVerticalBlockBorderWrapper'] { border-radius: 16px !important; border: 1px solid #E2E8F0 !important; box-shadow: 0 8px 20px rgba(11, 37, 69, 0.03) !important; background-color: #ffffff !important; padding: 24px !important; margin-bottom: 15px !important; }"
+    "div.stButton > button, div.stFormSubmitButton > button { background-color: #0B2545 !important; color: #ffffff !important; border: 1px solid #0B2545 !important; border-radius: 8px !important; padding: 10px 20px !important; font-weight: 600 !important; font-size: 0.95rem !important; width: 100% !important; transition: background 0.2s; }"
+    "div.stButton > button:hover, div.stFormSubmitButton > button:hover { background-color: #134074 !important; border-color: #134074 !important; color: #ffffff !important; }"
+    "label p { color: #0B2545 !important; font-weight: 600 !important; }"
+    ".status-badge { padding: 6px 14px; border-radius: 30px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; display: inline-block; margin-top: 8px; }"
+    ".disponivel { background-color: #EBF8FF; color: #2B6CB0; border: 1px solid #BEE3F8; }"
+    ".pendente { background-color: #FEFCBF; color: #975A16; border: 1px solid #FEF08A; }"
+    ".confirmado { background-color: #C6F6D5; color: #22543D; border: 1px solid #9AE6B4; }"
+    ".img-container img { border-radius: 12px !important; object-fit: cover !important; }"
+    "</style>"
+)
+st.markdown(estilos_css, unsafe_allow_html=True)
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║  MODAL DE PAGAMENTO                                          ║
@@ -152,4 +148,14 @@ def modal_presentear(item: dict, config: dict):
         descricao=item["id"][:25]
     )
     
-    st.markdown("<div style='background-color:#F7FAFC; padding:15px; border-radius:10px; font-size:0.95rem; margin-bottom:20px; border-left:4px solid #0B2545; color:#2D3748;'><strong style='color:#
+    # HTML seguro
+    html_instrucoes = (
+        "<div style='background-color:#F7FAFC; padding:15px; border-radius:10px; font-size:0.95rem; margin-bottom:20px; border-left:4px solid #0B2545; color:#2D3748;'>"
+        "<strong style='color:#0B2545;'>Como realizar o pagamento:</strong><br>"
+        "1. Acesse o app do seu banco de preferência.<br>"
+        "2. Escolha pagar via Pix, escaneie o QR Code ou utilize o Copia e Cola abaixo."
+        "</div>"
+    )
+    st.markdown(html_instrucoes, unsafe_allow_html=True)
+    
+    col_qr, col_copy = st.
