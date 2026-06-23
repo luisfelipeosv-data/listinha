@@ -124,7 +124,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Injeção de CSS Customizado corrigido para envelopar os anúncios corretamente
+# Injeção de CSS Customizado (Bordas de alto contraste)
 estilos_css = (
     "<style>"
     "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { "
@@ -141,24 +141,24 @@ estilos_css = (
     "div[data-testid='stTabs'] button[aria-selected='true'] { "
     "color: #0B2545 !important; border-bottom: 3px solid #0B2545 !important; }"
     
-    # Borda elegante corrigida envolvendo TODO o conteúdo do anúncio (st.container nativo)
-    "div[data-testid='stVerticalBlockBorderWrapper'] { "
+    # MOLDURA DOS ANÚNCIOS: Agora com borda azul escura super visível e fundo branco destacado
+    "[data-testid='stVerticalBlockBorderWrapper'] { "
     "background-color: #ffffff !important; "
-    "border: 2px solid #E2E8F0 !important; "
+    "border: 2px solid #0B2545 !important; "
     "border-radius: 16px !important; "
-    "padding: 20px !important; "
-    "margin-bottom: 15px !important; "
-    "box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04) !important; "
-    "transition: border-color 0.2s ease, transform 0.2s ease !important; }"
-    "div[data-testid='stVerticalBlockBorderWrapper']:hover { "
-    "border-color: #0B2545 !important; }"
+    "padding: 22px !important; "
+    "margin-bottom: 20px !important; "
+    "box-shadow: 0 10px 15px -3px rgba(11, 37, 69, 0.05), 0 4px 6px -2px rgba(11, 37, 69, 0.05) !important; "
+    "transition: transform 0.2s ease-in-out !important; }"
+    "[data-testid='stVerticalBlockBorderWrapper']:hover { "
+    "transform: translateY(-2px); }"
     
     "div.stButton > button, div.stFormSubmitButton > button { "
     "background-color: #0B2545 !important; color: #ffffff !important; "
     "border-radius: 8px !important; font-weight: 600 !important; width: 100% !important; }"
     "label p { color: #0B2545 !important; font-weight: 600 !important; }"
     
-    # Estilização Refinada dos Status Badges
+    # Badges de Status
     ".status-badge { padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; "
     "font-weight: 700; display: inline-block; text-align: center; }"
     ".disponivel { background-color: #EBF8FF !important; color: #2B6CB0 !important; border: 1px solid #BEE3F8 !important; }"
@@ -254,7 +254,7 @@ else:
         if status_atual == "disponivel":
             status_atual = "Ainda disponível :("
 
-        # O st.container(border=True) agora segura TODO o conteúdo de forma segura e elegante
+        # Container nativo envelopando perfeitamente todo o conteúdo do card
         with st.container(border=True):
             cols_item = st.columns([1.1, 2, 1])
             
