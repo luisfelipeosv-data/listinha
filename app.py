@@ -1,11 +1,12 @@
 """
-Casinha Sara & Luis — Lista de Presentes 🏠
-Estética Premium: Azul Escuro e Branco (Helvetica)
+Casinha Sara & Luis — Lista de Presentes Premium 🏠
+Estética Clean & Fancy: Azul Escuro, Branco e Fotos
 """
 
 import json
 import io
 import re
+import base64
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -26,7 +27,6 @@ DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 _file_lock = threading.Lock()
 
 def _catalogo_padrao() -> dict:
-    """Retorna estrutura inicial vazia com a sua chave Pix padrão."""
     return {
         "config": {
             "chave_pix": "8cc108fc-d117-4dcd-a080-9c6d0f9a1ca9",
@@ -97,7 +97,7 @@ def gerar_payload_pix(chave: str, nome_beneficiario: str, cidade: str, valor: fl
     payload_parts.extend([
         _tlv("58", "BR"),
         _tlv("59", nome_beneficiario[:25].upper()),
-        _tlv("60", cidade[:15].upper()),
+        _tlv("60", city_field := cidade[:15].upper()),
         _tlv("62", _tlv("05", "***")),
     ])
     payload_sem_crc = "".join(payload_parts) + "6304"
@@ -162,51 +162,75 @@ def modal_presentear(item: dict, config: dict):
             st.rerun()
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  CONFIGURAÇÃO E ESTILO (HELVETICA / AZUL E BRANCO)           ║
+# ║  CONFIGURAÇÃO E ESTILO HIGH-END (HELVETICA / AZUL E BRANCO)   ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 dados = carregar_dados()
 config = dados["config"]
 st.set_page_config(page_title=f"Lista {config['nome_casal']}", page_icon="🏠", layout="centered")
 
+# CSS Avançado e Corrigido para evitar botões quebrados
 st.markdown("""
 <style>
+/* Reset de Fonte Global */
 * { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important; }
-.stApp { background-color: #ffffff; color: #333333; }
+
+/* Fundo Off-White Fancy para contraste com os Cards Brancos */
+.stApp { background-color: #F8F9FA; color: #2D3748; }
 #MainMenu, footer, header { visibility: hidden; }
 
-/* Cards minimalistas */
-[data-testid="stVerticalBlockBorderWrapper"] {
-    border-radius: 12px !important;
-    border: 1px solid #e1e8ed !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
-    background: #ffffff !important;
+/* Estilização Fina dos Cards Dinâmicos */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-radius: 16px !important;
+    border: 1px solid #E2E8F0 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+    background-color: #ffffff !important;
+    padding: 20px !important;
+    margin-bottom: 15px !important;
 }
 
-/* Botões Customizados em Azul Escuro */
-.stButton > button {
-    border-radius: 8px !important;
+/* Correção Definitiva dos Botões Streamlit (Sem quebras) */
+div.stButton > button {
     background-color: #0B2545 !important;
     color: #ffffff !important;
-    border: none !important;
-    font-weight: 500 !important;
-}
-.stButton > button:hover {
-    background-color: #134074 !important;
+    border: 1px solid #0B2545 !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    transition: all 0.25s ease-in-out !important;
+    width: 100% !important;
+    box-shadow: 0 2px 4px rgba(11, 37, 69, 0.1) !important;
 }
 
-/* Badges de Status */
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    display: inline-block;
-    margin-top: 5px;
+div.stButton > button:hover {
+    background-color: #134074 !important;
+    border-color: #134074 !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(11, 37, 69, 0.2) !important;
 }
-.disponivel { background-color: #e3effd; color: #134074; }
-.pendente { background-color: #fff3cd; color: #856404; }
-.confirmado { background-color: #d4edda; color: #155724; }
+
+/* Badges Elegantes de Status */
+.status-badge {
+    padding: 6px 14px;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+}
+.disponivel { background-color: #EBF8FF; color: #2B6CB0; border: 1px solid #BEE3F8; }
+.pendente { background-color: #FEFCBF; color: #975A16; border: 1px solid #FEF08A; }
+.confirmado { background-color: #C6F6D5; color: #22543D; border: 1px solid #9AE6B4; }
+
+/* Container customizado para imagens redondas/moldura */
+.img-container img {
+    border-radius: 12px !important;
+    object-fit: cover !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -215,10 +239,10 @@ st.markdown("""
 # ╚══════════════════════════════════════════════════════════════╝
 
 st.markdown(f"""
-<div style='text-align: center; padding: 30px 10px;'>
-    <h1 style='color: #0B2545; font-weight: 700; font-size: 2.5rem; margin-bottom: 5px;'>Casinha {config['nome_casal']}</h1>
-    <p style='color: #666; font-size: 1.1rem; max-width: 500px; margin: 0 auto;'>
-        Estamos montando nosso cantinho. Escolha um item abaixo para nos presentear de forma simples e segura! 🤍
+<div style='text-align: center; padding: 40px 10px 20px 10px;'>
+    <h1 style='color: #0B2545; font-weight: 800; font-size: 2.8rem; margin-bottom: 10px; letter-spacing: -0.5px;'>Casinha {config['nome_casal']}</h1>
+    <p style='color: #718096; font-size: 1.1rem; max-width: 520px; margin: 0 auto; line-height: 1.6;'>
+        Bem-vindo à nossa lista de presentes. Escolha um dos itens abaixo para nos ajudar a construir nosso novo lar! 🏠🤍
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -226,61 +250,85 @@ st.markdown(f"""
 itens = dados["itens"]
 
 if not itens:
-    st.info("A lista está sendo preparada pelos noivos. Volte em breve! ✨")
+    st.markdown("""
+    <div style='text-align:center; padding: 40px; background: white; border-radius:16px; border: 1px dashed #CBD5E0; margin-top: 20px;'>
+        <span style='font-size: 2rem;'>✨</span>
+        <p style='color: #718096; margin-top: 10px; font-weight: 500;'>A lista está vazia no momento. Use o painel de controle abaixo para adicionar os presentes!</p>
+    </div>
+    """, unsafe_allow_html=True)
 else:
+    # Listagem dos Itens com Grid Assimétrico para Imagem + Conteúdo
     for item in itens:
         with st.container(border=True):
-            col_info, col_btn = st.columns([3, 1])
+            col_img, col_info, col_btn = st.columns([1.1, 2, 1])
+            
+            with col_img:
+                # Mostrar imagem real ou um placeholder minimalista cinza elegante
+                if item.get("foto"):
+                    st.markdown('<div class="img-container">', unsafe_allow_html=True)
+                    st.image(f"data:image/jpeg;base64,{item['foto']}", use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div style='height: 110px; background-color: #EDF2F7; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #A0AEC0; font-size: 1.8rem;'>
+                        🎁
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
             with col_info:
-                st.markdown(f"### {item['emoji']} {item['nome']}")
-                st.markdown(f"*{item['desc']}*")
-                st.markdown(f"<span style='font-size:1.2rem; font-weight:700; color:#0B2545;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='color: #0B2545; font-size: 1.25rem; margin: 0 0 4px 0; font-weight:700;'>{item['emoji']} {item['nome']}</h3>", unsafe_allow_html=True)
+                if item["desc"]:
+                    st.markdown(f"<p style='color: #718096; font-size: 0.9rem; margin: 0 0 8px 0; font-style: italic;'>{item['desc']}</p>", unsafe_allow_html=True)
+                st.markdown(f"<span style='font-size: 1.3rem; font-weight: 800; color: #0B2545;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
                 
+                # Status Badges
                 if item["status"] == "disponivel":
-                    st.markdown("<span class='status-badge disponivel'>Disponível</span>", unsafe_allow_html=True)
+                    st.markdown("<br><span class='status-badge disponivel'>Disponível</span>", unsafe_allow_html=True)
                 elif item["status"] == "pendente":
-                    st.markdown(f"<span class='status-badge pendente'>Aguardando validação ({item['quem']})</span>", unsafe_allow_html=True)
+                    st.markdown(f"<br><span class='status-badge pendente'>Aguardando Noivos ({item['quem']})</span>", unsafe_allow_html=True)
                 elif item["status"] == "confirmado":
-                    st.markdown(f"<span class='status-badge confirmado'>Presenteado por {item['quem']} 🤍</span>", unsafe_allow_html=True)
+                    st.markdown(f"<br><span class='status-badge confirmado'>Presenteado por {item['quem']} 🤍</span>", unsafe_allow_html=True)
             
             with col_btn:
-                st.write("") 
+                # Centralizar o botão verticalmente de forma limpa
+                st.markdown("<div style='height: 25px;'></div>", unsafe_allow_html=True)
                 if item["status"] == "disponivel":
                     if st.button("Presentear", key=f"btn_{item['id']}", use_container_width=True):
                         modal_presentear(item, config)
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  PAINEL DE CONTROLE                                          ║
+# ║  PAINEL DE CONTROLE (ADMINISTRAÇÃO COMPLETA)                 ║
 # ╚══════════════════════════════════════════════════════════════╝
 
-st.divider()
-expander_admin = st.expander("🔑 Painel de Controle do Casal", expanded=False)
+st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
+expander_admin = st.expander("🔑 Painel de Controle Exclusivo do Casal", expanded=False)
 
 with expander_admin:
-    senha_digitada = st.text_input("Digite a senha do casal:", type="password")
+    senha_digitada = st.text_input("Senha de Acesso:", type="password", placeholder="Digite a senha para editar")
     
     if senha_digitada == SENHA_ADMIN:
-        st.success("Acesso Liberado!")
-        tab_listar, tab_add, tab_cfg = st.tabs(["⚙️ Gerenciar Itens", "➕ Adicionar Novo", "🔧 Configurações Gerais"])
+        st.success("Acesso Autorizado!")
+        tab_listar, tab_add, tab_cfg = st.tabs(["⚙️ Gerenciar Itens", "➕ Adicionar com Foto", "🔧 Configurações da Conta"])
         
+        # TAB 1: GERENCIAR ITENS EXISTENTES
         with tab_listar:
             if not itens:
-                st.info("Nenhum item adicionado ainda.")
+                st.info("Nenhum item cadastrado ainda.")
             else:
                 for idx, item in enumerate(itens):
-                    col_id, col_edit, col_status = st.columns([2, 2, 2])
+                    col_id, col_edit, col_status = st.columns([2.5, 1.5, 2])
                     
                     with col_id:
-                        st.markdown(f"**{item['nome']}**<br>R$ {item['preco']:.2f}", unsafe_allow_html=True)
+                        st.markdown(f"**{item['emoji']} {item['nome']}**<br><span style='color:#0B2545;font-weight:600;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
                     
                     with col_edit:
                         if item["status"] == "pendente":
-                            if st.button("✅ Confirmar Pix", key=f"conf_{item['id']}"):
+                            if st.button("✅ Confirmar", key=f"conf_{item['id']}", use_container_width=True):
                                 dados["itens"][idx]["status"] = "confirmado"
                                 salvar_dados(dados)
                                 st.rerun()
                         
-                        if st.button("❌ Remover Item", key=f"del_{item['id']}"):
+                        if st.button("❌ Remover", key=f"del_{item['id']}", use_container_width=True):
                             dados["itens"].pop(idx)
                             salvar_dados(dados)
                             st.rerun()
@@ -302,16 +350,30 @@ with expander_admin:
                             salvar_dados(dados)
                             st.rerun()
 
+        # TAB 2: ADICIONAR NOVO ITEM COM UPLOAD DE IMAGEM
         with tab_add:
             with st.form(key="form_adicionar_item", clear_on_submit=True):
-                st.subheader("Cadastrar Novo Presente")
-                novo_nome = st.text_input("Nome do Item:", placeholder="Ex: Jogo de Panelas")
-                novo_preco = st.number_input("Preço Sugerido (R$):", min_value=1.0, value=50.0, step=5.0)
-                novo_emoji = st.text_input("Emoji representativo:", value="🎁", max_chars=2)
-                nova_desc = st.text_input("Breve descrição/recado:", placeholder="Ex: Para nossos jantares especiais")
+                st.subheader("Novo Presente")
+                novo_nome = st.text_input("Nome do Item:", placeholder="Ex: Jogo de Pratos Canelados")
+                novo_preco = st.number_input("Preço Sugerido (R$):", min_value=1.0, value=100.0, step=10.0)
                 
-                if st.form_submit_button("Salvar na Lista", use_container_width=True):
+                col_inputs = st.columns([1, 3])
+                with col_inputs[0]:
+                    novo_emoji = st.text_input("Emoji:", value="🎁", max_chars=2)
+                with col_inputs[1]:
+                    nova_desc = st.text_input("Mensagem/Descrição:", placeholder="Ex: Para servir nossa família")
+                
+                # NOVO: Upload de Foto
+                foto_upload = st.file_uploader("Selecione uma imagem do produto (Opcional):", type=["jpg", "jpeg", "png"])
+                
+                if st.form_submit_button("Salvar Presente na Lista", use_container_width=True):
                     if novo_nome.strip():
+                        # Converter imagem para Base64 string
+                        foto_b64 = ""
+                        if foto_upload is not None:
+                            bytes_data = foto_upload.read()
+                            foto_b64 = base64.b64encode(bytes_data).decode("utf-8")
+                            
                         novo_item = {
                             "id": gerar_id(novo_nome),
                             "nome": novo_nome.strip(),
@@ -319,27 +381,14 @@ with expander_admin:
                             "emoji": novo_emoji.strip() or "🎁",
                             "desc": nova_desc.strip(),
                             "status": "disponivel",
-                            "quem": ""
+                            "quem": "",
+                            "foto": foto_b64  # Salva a imagem convertida
                         }
                         dados["itens"].append(novo_item)
                         salvar_dados(dados)
                         st.success(f"'{novo_nome}' adicionado com sucesso!")
                         st.rerun()
                     else:
-                        st.error("O nome do item é obrigatório.")
+                        st.error("Por favor, dê um nome ao item.")
 
-        with tab_cfg:
-            st.subheader("Ajustar Dados da Conta")
-            cfg_casal = st.text_input("Nome do Casal:", value=config["nome_casal"])
-            cfg_chave = st.text_input("Sua Chave Pix:", value=config["chave_pix"])
-            cfg_titular = st.text_input("Nome do Titular (Igual no banco):", value=config["nome_beneficiario"])
-            cfg_cidade = st.text_input("Cidade (Sem acentos):", value=config["cidade"])
-            
-            if st.button("Salvar Configurações", use_container_width=True):
-                dados["config"]["nome_casal"] = cfg_casal
-                dados["config"]["chave_pix"] = cfg_chave.strip()
-                dados["config"]["nome_beneficiario"] = cfg_titular.strip().upper()
-                dados["config"]["cidade"] = cfg_cidade.strip().upper()
-                salvar_dados(dados)
-                st.success("Configurações salvas e atualizadas!")
-                st.rerun()
+        # TAB 3: CONFIGURAÇÕES DA CONTA (PIX / BENEFICIÁRIO)
