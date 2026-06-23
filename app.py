@@ -5,6 +5,7 @@ import base64
 import os
 import streamlit as st
 import qrcode
+import requests
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║  SISTEMA DE BANCO DE DADOS LOCAL (IMUNIZADO CONTRA REFRESH)  ║
@@ -21,6 +22,7 @@ def _catalogo_padrao() -> dict:
             "nome_casal": "Sara & Luis",
             "nome_beneficiario": "SARA E LUIS",
             "cidade": "SAO PAULO",
+            "mp_access_token": ""  # Token do Mercado Pago armazenado aqui
         },
         "itens": []
     }
@@ -30,6 +32,9 @@ def carregar_dados() -> dict:
         try:
             with open(ARQUIVO_BANCO, "r", encoding="utf-8") as f:
                 dados = json.load(f)
+                # Garante compatibilidade caso o campo novo não exista no arquivo antigo
+                if "mp_access_token" not in dados["config"]:
+                    dados["config"]["mp_access_token"] = ""
                 st.session_state["db_catalogo"] = dados
                 return dados
         except Exception:
@@ -54,7 +59,48 @@ def gerar_id(nome: str) -> str:
     return f"{slug}-{int(time.time())}"
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  QR CODE PIX                                                 ║
+# ║  INTEGRAÇÃO MERCADO PAGO (CARTÃO DE CRÉDITO)                 ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
+    if not access_token or access_token.strip() == "":
+        return None
+        
+    url = "https://api.mercadopago.com/v1/preferences"
+    headers = {
+        "Authorization": f"Bearer {access_token.strip()}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "items": [
+            {
+                "title": f"Presente: {item['emoji']} {item['nome']}",
+                "quantity": 1,
+                "currency_id": "BRL",
+                "unit_price": float(item["preco"])
+            }
+        ],
+        "payment_methods": {
+            "excluded_payment_types": [
+                {"id": "ticket"},        # Desativa Boleto
+                {"id": "bank_transfer"}  # Desativa Pix do MP (já usamos o seu direto)
+            ],
+            "installments": 12           # Permite parcelamento em até 12x
+        },
+        "auto_return": "approved"
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        if response.status_code in [200, 201]:
+            return response.json().get("init_point")
+    except Exception:
+        pass
+    return None
+
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  QR CODE PIX NATIVO                                          ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 def _tlv(tag: str, valor: str) -> str:
@@ -72,13 +118,7 @@ def _crc16_ccitt(payload: str) -> str:
             crc &= 0xFFFF
     return f"{crc:04X}"
 
-def gerar_payload_pix(
-    chave: str, 
-    nome_beneficiario: str, 
-    cidade: str, 
-    valor: float, 
-    descricao: str
-) -> str:
+def gerar_payload_pix(chave: str, nome_beneficiario: str, cidade: str, valor: float, descricao: str) -> str:
     gui = _tlv("00", "BR.GOV.BCB.PIX")
     chave_field = _tlv("01", chave)
     desc_field = _tlv("02", descricao[:25])
@@ -103,12 +143,7 @@ def gerar_payload_pix(
     return payload_sem_crc + _crc16_ccitt(payload_sem_crc)
 
 def gerar_qrcode_pix(payload: str) -> bytes:
-    qr = qrcode.QRCode(
-        version=None, 
-        error_correction=qrcode.constants.ERROR_CORRECT_M, 
-        box_size=8, 
-        border=2
-    )
+    qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=8, border=2)
     qr.add_data(payload)
     qr.make(fit=True)
     img = qr.make_image(fill_color="#0B2545", back_color="#ffffff")
@@ -118,13 +153,9 @@ def gerar_qrcode_pix(payload: str) -> bytes:
 
 dados = carregar_dados()
 config = dados["config"]
-st.set_page_config(
-    page_title=f"Lista {config['nome_casal']}", 
-    page_icon="🏠", 
-    layout="centered"
-)
+st.set_page_config(page_title=f"Lista {config['nome_casal']}", page_icon="🏠", layout="centered")
 
-# Injeção de CSS Customizado (Bordas de alto contraste)
+# Injeção de CSS Customizado (A Mágica da Borda Infalível)
 estilos_css = (
     "<style>"
     "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { "
@@ -132,7 +163,7 @@ estilos_css = (
     ".stApp { background-color: #F4F7FA !important; color: #2D3748 !important; }"
     "#MainMenu, footer, header { visibility: hidden; }"
     
-    # Painel do Casal (Sanfona)
+    # Painel do Casal
     ".stExpander { border: 2px solid #0B2545 !important; "
     "border-radius: 12px !important; background-color: #ffffff !important; "
     "margin-top: 40px !important; }"
@@ -141,17 +172,14 @@ estilos_css = (
     "div[data-testid='stTabs'] button[aria-selected='true'] { "
     "color: #0B2545 !important; border-bottom: 3px solid #0B2545 !important; }"
     
-    # MOLDURA DOS ANÚNCIOS: Agora com borda azul escura super visível e fundo branco destacado
-    "[data-testid='stVerticalBlockBorderWrapper'] { "
+    # SELETOR INTELIGENTE: Circula o bloco inteiro que contém o marcador invisível do anúncio
+    "div[data-testid='stVerticalBlock']:has(> div.element-container div.anuncio-identificador) { "
     "background-color: #ffffff !important; "
     "border: 2px solid #0B2545 !important; "
     "border-radius: 16px !important; "
     "padding: 22px !important; "
-    "margin-bottom: 20px !important; "
-    "box-shadow: 0 10px 15px -3px rgba(11, 37, 69, 0.05), 0 4px 6px -2px rgba(11, 37, 69, 0.05) !important; "
-    "transition: transform 0.2s ease-in-out !important; }"
-    "[data-testid='stVerticalBlockBorderWrapper']:hover { "
-    "transform: translateY(-2px); }"
+    "margin-bottom: 25px !important; "
+    "box-shadow: 0 10px 15px -3px rgba(11, 37, 69, 0.06) !important; }"
     
     "div.stButton > button, div.stFormSubmitButton > button { "
     "background-color: #0B2545 !important; color: #ffffff !important; "
@@ -172,50 +200,53 @@ estilos_css = (
 st.markdown(estilos_css, unsafe_allow_html=True)
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  MODAL DE PRESENTEAR                                         ║
+# ║  MODAL DE PRESENTEAR (PIX + CARTÃO DE CRÉDITO)               ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 @st.dialog("🎁 Presentear")
 def modal_presentear(item: dict, config: dict):
-    t_nome = f"<h2 style='color:#F8FAFC; margin-bottom: 4px;'>{item['emoji']} {item['nome']}</h2>"
-    st.markdown(t_nome, unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:#F8FAFC; margin-bottom: 4px;'>{item['emoji']} {item['nome']}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<p style='font-size: 1.2rem; color: #CBD5E1;'>Valor: <strong style='color:#38BDF8; font-size: 1.4rem;'>R$ {item['preco']:.2f}</strong></p>", unsafe_allow_html=True)
     
-    t_preco = f"<p style='font-size: 1.2rem; color: #CBD5E1;'>Valor do Presente: <strong style='color:#38BDF8; font-size: 1.4rem;'>R$ {item['preco']:.2f}</strong></p>"
-    st.markdown(t_preco, unsafe_allow_html=True)
-    
-    payload = gerar_payload_pix(
-        chave=config["chave_pix"],
-        nome_beneficiario=config["nome_beneficiario"],
-        cidade=config["cidade"],
-        valor=item["preco"],
-        descricao=item["id"][:25]
+    # Geração dos Payloads
+    payload_pix = gerar_payload_pix(
+        chave=config["chave_pix"], nome_beneficiario=config["nome_beneficiario"],
+        cidade=config["cidade"], valor=item["preco"], descricao=item["id"][:25]
     )
+    link_cartao = gerar_link_cartao_mercado_pago(item, config.get("mp_access_token", ""))
     
-    html_instrucoes = (
-        "<div style='background-color:#0F172A; padding:16px; border-radius:8px; border: 1px solid #334155; margin-bottom: 20px;'>"
-        "<span style='color:#38BDF8; font-weight:bold; font-size:1.05rem; display:block; margin-bottom:6px;'>Passo a passo para pagar:</span>"
-        "<p style='color:#E2E8F0; margin:4px 0; font-size:0.95rem;'>1. Abra o aplicativo do seu banco de preferência.</p>"
-        "<p style='color:#E2E8F0; margin:4px 0; font-size:0.95rem;'>2. Vá na área Pix e escolha <strong>Ler QR Code</strong> ou <strong>Pix Copia e Cola</strong>.</p>"
-        "</div>"
-    )
-    st.markdown(html_instrucoes, unsafe_allow_html=True)
-    
-    colunas = st.columns([1, 1.3])
-    
-    with colunas[0]:
-        st.image(gerar_qrcode_pix(payload), width=150)
-    with colunas[1]:
-        st.markdown("<p style='color:#F8FAFC; font-weight:bold; margin-bottom:4px;'>Código Pix Copia e Cola:</p>", unsafe_allow_html=True)
-        st.code(payload, language="text")
+    # Interface de Opções
+    if link_cartao:
+        opcao_pgto = st.radio("Escolha a forma de pagamento:", ["Pix (Imediato)", "Cartão de Crédito (Até 12x)"], horizontal=True)
+    else:
+        opcao_pgto = "Pix (Imediato)"
         
+    st.markdown("<hr style='border:0; border-top:1px solid #334155; margin: 15px 0;'>", unsafe_allow_html=True)
+    
+    if opcao_pgto == "Pix (Imediato)":
+        html_instrucoes = (
+            "<div style='background-color:#0F172A; padding:12px; border-radius:8px; border: 1px solid #334155; margin-bottom: 15px;'>",
+            "<p style='color:#E2E8F0; margin:0; font-size:0.95rem;'>Abra o app do seu banco e pague usando o QR Code ou Copia e Cola abaixo:</p>",
+            "</div>"
+        )
+        st.markdown("".join(html_instrucoes), unsafe_allow_html=True)
+        col_qr = st.columns([1, 1.3])
+        with col_qr[0]:
+            st.image(gerar_qrcode_pix(payload_pix), width=140)
+        with col_qr[1]:
+            st.markdown("<p style='color:#F8FAFC; font-size:0.9rem; font-weight:bold; margin:0;'>Código Copia e Cola:</p>", unsafe_allow_html=True)
+            st.code(payload_pix, language="text")
+    else:
+        st.markdown("<p style='color:#E2E8F0; font-size:0.95rem;'>Clique no botão abaixo para realizar o pagamento parcelado com total segurança no Mercado Pago:</p>", unsafe_allow_html=True)
+        st.link_button("💳 Ir para Pagamento em Cartão", link_cartao, use_container_width=True)
+        st.markdown("<small style='color:#94A3B8;'>Nota: Após concluir a transação no cartão, preencha a confirmação abaixo.</small>", unsafe_allow_html=True)
+
     st.markdown("<hr style='border:0; border-top:1px solid #334155; margin: 20px 0;'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='color:#F8FAFC; font-size: 1.2rem; margin-bottom:10px;'>Avise os Noivos</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color:#F8FAFC; font-size: 1.1rem; margin-bottom:5px;'>Avise os Noivos</h3>", unsafe_allow_html=True)
     
     with st.form(key=f"form_{item['id']}"):
         nome_convidado = st.text_input("Seu nome completo:", placeholder="Digite seu nome aqui...")
-        
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-        if st.form_submit_button("✓ Confirme que fez o Pix"):
+        if st.form_submit_button("✓ Confirme que enviou o Presente"):
             quem = nome_convidado.strip() or "Anônimo"
             dados_atuais = carregar_dados()
             for i, it in enumerate(dados_atuais["itens"]):
@@ -228,42 +259,31 @@ def modal_presentear(item: dict, config: dict):
             st.rerun()
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  VISÃO PÚBLICA                                               ║
+# ║  VISÃO PÚBLICA DA LISTA                                      ║
 # ╚══════════════════════════════════════════════════════════════╝
 
-cabecalho = (
-    "<div style='text-align: center; padding: 20px;'>"
-    f"<h1 style='color: #0B2545;'>Casinha {config['nome_casal']}</h1>"
-    "<p>Escolha um dos itens para o nosso novo lar! 🏠🤍</p>"
-    "</div>"
-)
-st.markdown(cabecalho, unsafe_allow_html=True)
+st.markdown(f"<div style='text-align: center; padding: 10px;'> <h1 style='color: #0B2545;'>Casinha {config['nome_casal']}</h1> <p>Escolha um dos itens para o nosso novo lar! 🏠🤍</p> </div>", unsafe_allow_html=True)
 
 itens = dados["itens"]
 
 if not itens:
-    vazio = (
-        "<div style='text-align:center; padding: 30px; border: 1px dashed #0B2545; border-radius: 8px;'>"
-        "A lista está vazia no momento. Use o painel de controle abaixo para adicionar os presentes!"
-        "</div>"
-    )
-    st.markdown(vazio, unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center; padding: 30px; border: 1px dashed #0B2545; border-radius: 8px;'>A lista está vazia no momento. Adicione itens no painel abaixo!</div>", unsafe_allow_html=True)
 else:
     for item in itens:
         status_atual = item["status"]
         if status_atual == "disponivel":
             status_atual = "Ainda disponível :("
 
-        # Container nativo envelopando perfeitamente todo o conteúdo do card
-        with st.container(border=True):
+        # Estrutura do Card protegida por marcador CSS
+        with st.container():
+            st.markdown('<div class="anuncio-identificador"></div>', unsafe_allow_html=True)
             cols_item = st.columns([1.1, 2, 1])
             
             with cols_item[0]:
                 if item.get("foto"):
-                    img_html = f"<div class='img-container'><img src='data:image/jpeg;base64,{item['foto']}' width='100%'/></div>"
-                    st.markdown(img_html, unsafe_allow_html=True)
+                    st.markdown(f"<div class='img-container'><img src='data:image/jpeg;base64,{item['foto']}' width='100%'/></div>", unsafe_allow_html=True)
                 else:
-                    st.markdown("<div style='font-size:2.5rem;text-align:center;'>🎁</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='font-size:2.5rem;text-align:center;padding-top:5px;'>🎁</div>", unsafe_allow_html=True)
                     
             with cols_item[1]:
                 st.markdown(f"<h3 style='margin:0;'>{item['emoji']} {item['nome']}</h3>", unsafe_allow_html=True)
@@ -276,11 +296,13 @@ else:
             
             with cols_item[2]:
                 if status_atual == "Ainda disponível :(":
+                    st.markdown("<div style='padding-top:10px;'>", unsafe_allow_html=True)
                     if st.button("Presentear", key=f"btn_{item['id']}", use_container_width=True):
                         modal_presentear(item, config)
+                    st.markdown("</div>", unsafe_allow_html=True)
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  PAINEL DE CONTROLE                                          ║
+# ║  PAINEL DE CONTROLE (ADMINISTRAÇÃO)                          ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 st.markdown("<br>", unsafe_allow_html=True)
@@ -296,19 +318,16 @@ with admin_panel:
         
         with tab1:
             if not itens:
-                st.info("Nenhum item.")
+                st.info("Nenhum item cadastrado.")
             else:
                 for idx, item in enumerate(itens):
                     c_admin = st.columns([2, 1, 2])
-                    
-                    status_ajustado = item["status"]
-                    if status_ajustado == "disponivel":
-                        status_ajustado = "Ainda disponível :("
+                    status_ajustado = "Ainda disponível :(" if item["status"] == "disponivel" else item["status"]
                         
                     with c_admin[0]:
                         texto_item = f"**{item['nome']}** (R$ {item['preco']:.2f})"
                         if item.get("quem"):
-                            texto_item += f"  \n🎁 *Presenteado por: {item['quem']}*"
+                            texto_item += f"  \n🎁 *Por: {item['quem']}*"
                         st.markdown(texto_item)
                     
                     with c_admin[1]:
@@ -344,14 +363,9 @@ with admin_panel:
                             b64 = base64.b64encode(foto.read()).decode("utf-8")
                             
                         dados["itens"].append({
-                            "id": gerar_id(n_nome),
-                            "nome": n_nome.strip(),
-                            "preco": float(n_preco),
-                            "emoji": n_emoji.strip() or "🎁",
-                            "desc": n_desc.strip(),
-                            "status": "Ainda disponível :(",
-                            "quem": "",
-                            "foto": b64
+                            "id": gerar_id(n_nome), "nome": n_nome.strip(), "preco": float(n_preco),
+                            "emoji": n_emoji.strip() or "🎁", "desc": n_desc.strip(),
+                            "status": "Ainda disponível :(", "quem": "", "foto": b64
                         })
                         salvar_dados(dados)
                         st.success("Adicionado!")
@@ -363,12 +377,14 @@ with admin_panel:
                 c_chave = st.text_input("Chave Pix:", value=config["chave_pix"])
                 c_nome = st.text_input("Beneficiário:", value=config["nome_beneficiario"])
                 c_cidade = st.text_input("Cidade:", value=config["cidade"])
+                c_token = st.text_input("Mercado Pago Access Token (Opcional):", value=config.get("mp_access_token", ""), type="password", help="Cole o seu Access Token de produção do Mercado Pago para ativar a opção de cartão de crédito.")
                 
                 if st.form_submit_button("Salvar Config."):
                     dados["config"]["nome_casal"] = c_casal
                     dados["config"]["chave_pix"] = c_chave.strip()
                     dados["config"]["nome_beneficiario"] = c_nome.strip().upper()
                     dados["config"]["cidade"] = c_cidade.strip().upper()
+                    dados["config"]["mp_access_token"] = c_token.strip()
                     salvar_dados(dados)
-                    st.success("Salvo!")
+                    st.success("Configurações atualizadas!")
                     st.rerun()
