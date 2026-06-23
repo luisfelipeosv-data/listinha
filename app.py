@@ -1,6 +1,6 @@
 """
 Casinha Sara & Luis — Lista de Presentes Premium 🏠
-Design Corrigido: Helvetica Autêntica, Azul Noturno e Proteção de Layout
+Design de Alta Precisão: Sem quebras de ícones, abas visíveis e PIX legível
 """
 
 import json
@@ -119,67 +119,95 @@ config = dados["config"]
 st.set_page_config(page_title=f"Lista {config['nome_casal']}", page_icon="🏠", layout="centered")
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  ARQUITETURA DE DESIGN CSS (PROTEÇÃO CONTRA QUEBRAS)         ║
+# ║  ESTILIZAÇÃO CIRÚRGICA DE ALTA FIDELIDADE (CSS)              ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 st.markdown("""
 <style>
-/* Aplicação segura da fonte Helvetica sem destruir os ícones nativos */
-html, body, [data-testid="stAppViewContainer"], .stMarkdown, p, h1, h2, h3, h4, h5, h6, span, label, li, input, button, select {
+/* 1. Aplicação segura da fonte Helvetica (sem quebrar tags estruturais de ícones) */
+h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
 }
 
-/* Fundo Premium Off-White Luxury */
+/* 2. Fundo Off-White Customizado */
 .stApp { 
-    background: linear-gradient(135deg, #F4F7FA 0%, #E9EFF5 100%) !important; 
+    background-color: #F4F7FA !important;
     color: #2D3748 !important; 
 }
 #MainMenu, footer, header { visibility: hidden; }
 
-/* Proteção e Estilização Forçada do Modal (Resolve contraste em modo escuro) */
-div[role="dialog"] {
+/* 3. Correção e Destaque Visual do Painel de Controle (Expander) */
+.stExpander {
+    border: 2px solid #0B2545 !important;
+    border-radius: 12px !important;
     background-color: #ffffff !important;
-    color: #2D3748 !important;
-    border-radius: 16px !important;
-    border: 1px solid #E2E8F0 !important;
+    box-shadow: 0 4px 12px rgba(11, 37, 69, 0.05) !important;
+    margin-top: 20px !important;
 }
-div[role="dialog"] h3, div[role="dialog"] span, div[role="dialog"] p, div[role="dialog"] div {
-    color: #2D3748 !important;
+.stExpander summary p {
+    color: #0B2545 !important;
+    font-weight: 700 !important;
+    font-size: 1.1rem !important;
 }
 
-/* Estilização dos Cards de Presentes */
+/* 4. Correção Total das Abas do Painel de Controle (Ficavam invisíveis) */
+div[data-testid="stTabs"] button {
+    color: #4A5568 !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    background-color: transparent !important;
+}
+div[data-testid="stTabs"] button[aria-selected="true"] {
+    color: #0B2545 !important;
+    border-bottom: 3px solid #0B2545 !important;
+    font-weight: 700 !important;
+}
+
+/* 5. Correção do Bloco de Código PIX (Garante legibilidade total) */
+code, pre {
+    background-color: #F7FAFC !important;
+    color: #0B2545 !important;
+    font-family: monospace !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    border: 1px solid #CBD5E0 !important;
+}
+
+/* 6. Cards de Exibição dos Presentes */
 div[data-testid="stVerticalBlockBorderWrapper"] {
     border-radius: 16px !important;
     border: 1px solid #E2E8F0 !important;
-    box-shadow: 0 10px 25px rgba(11, 37, 69, 0.04) !important;
+    box-shadow: 0 8px 20px rgba(11, 37, 69, 0.03) !important;
     background-color: #ffffff !important;
     padding: 24px !important;
     margin-bottom: 15px !important;
 }
 
-/* Botões do Sistema — Azul Escuro Premium */
+/* 7. Botões Sólidos e Elegantes em Azul Escuro */
 div.stButton > button, div.stFormSubmitButton > button {
     background-color: #0B2545 !important;
     color: #ffffff !important;
     border: 1px solid #0B2545 !important;
     border-radius: 8px !important;
-    padding: 12px 24px !important;
+    padding: 10px 20px !important;
     font-weight: 600 !important;
     font-size: 0.95rem !important;
-    transition: all 0.2s ease-in-out !important;
     width: 100% !important;
-    box-shadow: 0 4px 6px rgba(11, 37, 69, 0.1) !important;
+    transition: background 0.2s;
 }
-
 div.stButton > button:hover, div.stFormSubmitButton > button:hover {
     background-color: #134074 !important;
     border-color: #134074 !important;
     color: #ffffff !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 6px 12px rgba(11, 37, 69, 0.15) !important;
 }
 
-/* Badges de Status Modernas */
+/* 8. Labels de Formulários sempre visíveis */
+label p {
+    color: #0B2545 !important;
+    font-weight: 600 !important;
+}
+
+/* Badges de Status */
 .status-badge {
     padding: 6px 14px;
     border-radius: 30px;
@@ -188,7 +216,6 @@ div.stButton > button:hover, div.stFormSubmitButton > button:hover {
     text-transform: uppercase;
     display: inline-block;
     margin-top: 8px;
-    letter-spacing: 0.5px;
 }
 .disponivel { background-color: #EBF8FF; color: #2B6CB0; border: 1px solid #BEE3F8; }
 .pendente { background-color: #FEFCBF; color: #975A16; border: 1px solid #FEF08A; }
@@ -202,14 +229,13 @@ div.stButton > button:hover, div.stFormSubmitButton > button:hover {
 """, unsafe_allow_html=True)
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  MODAL DE PAGAMENTO (ALINHADO COM O DESIGN)                  ║
+# ║  MODAL DE PAGAMENTO                                          ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 @st.dialog("🎁 Presentear")
 def modal_presentear(item: dict, config: dict):
-    # Forçar cores internas do modal via HTML inline seguro para evitar conflitos do Streamlit
     st.markdown(f"<h2 style='color:#0B2545; font-weight:700; margin-top:0;'>{item['emoji']} {item['nome']}</h2>", unsafe_allow_html=True)
-    st.markdown(f"<p style='font-size:1.1rem; color:#4A5568;'>Valor sugerido: <strong style='color:#0B2545; font-size:1.3rem;'>R$ {item['preco']:.2f}</strong></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='font-size:1.1rem; color:#2D3748;'>Valor sugerido: <strong style='color:#0B2545; font-size:1.3rem;'>R$ {item['preco']:.2f}</strong></p>", unsafe_allow_html=True)
     
     payload = gerar_payload_pix(
         chave=config["chave_pix"],
@@ -220,10 +246,10 @@ def modal_presentear(item: dict, config: dict):
     )
     
     st.markdown("""
-    <div style='background-color:#F7FAFC; padding:15px; border-radius:10px; font-size:0.9rem; margin-bottom:20px; border-left:4px solid #0B2545; color:#4A5568;'>
+    <div style='background-color:#F7FAFC; padding:15px; border-radius:10px; font-size:0.95rem; margin-bottom:20px; border-left:4px solid #0B2545; color:#2D3748;'>
         <strong style='color:#0B2545;'>Como realizar o pagamento:</strong><br>
         1. Acesse o app do seu banco de preferência.<br>
-        2. Escolha pagar via Pix e escaneie o QR Code ou utilize o Copia e Cola.
+        2. Escolha pagar via Pix, escaneie o QR Code ou utilize o Copia e Cola abaixo.
     </div>
     """, unsafe_allow_html=True)
     
@@ -231,7 +257,7 @@ def modal_presentear(item: dict, config: dict):
     with col_qr:
         st.image(gerar_qrcode_pix(payload), width=160)
     with col_copy:
-        st.markdown("<p style='font-weight:600; margin-bottom:5px; color:#0B2545;'>Pix Copia e Cola:</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-weight:700; margin-bottom:5px; color:#0B2545;'>Pix Copia e Cola:</p>", unsafe_allow_html=True)
         st.code(payload, language="text")
         
     st.divider()
@@ -270,7 +296,7 @@ if not itens:
     st.markdown("""
     <div style='text-align:center; padding: 50px; background: white; border-radius:16px; border: 1px dashed #CBD5E0; margin-top: 20px;'>
         <span style='font-size: 2.2rem;'>✨</span>
-        <p style='color: #718096; margin-top: 12px; font-weight: 500; font-size:1.05rem;'>A lista está sendo preparada. Use o painel abaixo para cadastrar itens!</p>
+        <p style='color: #718096; margin-top: 12px; font-weight: 500; font-size:1.05rem;'>A lista está vazia. Acesse o Painel de Controle abaixo para cadastrar os presentes!</p>
     </div>
     """, unsafe_allow_html=True)
 else:
@@ -310,7 +336,7 @@ else:
                         modal_presentear(item, config)
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  PAINEL DE CONTROLE EXCLUSIVO                                ║
+# ║  PAINEL DE CONTROLE                                          ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
@@ -410,8 +436,4 @@ with expander_admin:
             if st.button("Salvar Todas as Configurações"):
                 dados["config"]["nome_casal"] = cfg_casal
                 dados["config"]["chave_pix"] = cfg_chave.strip()
-                dados["config"]["nome_beneficiario"] = cfg_titular.strip().upper()
-                dados["config"]["cidade"] = cfg_cidade.strip().upper()
-                salvar_dados(dados)
-                st.success("Configurações salvas com sucesso!")
-                st.rerun()
+                dados["config"]
