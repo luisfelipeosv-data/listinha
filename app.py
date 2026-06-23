@@ -1,6 +1,6 @@
 """
 Casinha Sara & Luis — Lista de Presentes Premium 🏠
-Banco de Dados em Nuvem e Otimizado para Teclados de Celular
+Versão Corrigida: Sem erros de quebra de String / Sintaxe
 """
 
 import json
@@ -109,15 +109,15 @@ def gerar_qrcode_pix(payload: str) -> bytes:
     return buffer.getvalue()
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  CONFIGURAÇÃO DA PÁGINA                                      ║
+# ║  CONFIGURAÇÃO DA PÁGINA E ESTILOS                            ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 dados = carregar_dados()
 config = dados["config"]
 st.set_page_config(page_title=f"Lista {config['nome_casal']}", page_icon="🏠", layout="centered")
 
-# Estilos Visuais Ajustados
-st.markdown("""
+# CSS Inline injetado de forma segura sem quebras de strings triplas
+estilos_css = """
 <style>
 h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
@@ -147,5 +147,4 @@ div[data-testid="stTabs"] button {
     font-size: 1rem !important;
 }
 div[data-testid="stTabs"] button[aria-selected="true"] {
-    color: #0B2545 !important;
-    border-bottom: 3px solid #0B
+    color:
