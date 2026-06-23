@@ -268,7 +268,6 @@ def modal_presentear(item: dict, config: dict):
             dados_atuais = carregar_dados()
             for i, it in enumerate(dados_atuais["itens"]):
                 if it["id"] == item["id"]:
-                    # Atualiza exatamente para o novo status mantendo na lista
                     dados_atuais["itens"][i]["status"] = "Alguém já nos ajudou com esse :)"
                     dados_atuais["itens"][i]["quem"] = quem
                     break
@@ -277,7 +276,7 @@ def modal_presentear(item: dict, config: dict):
             st.rerun()
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  VISÃO PÚBLICA DA LISTA                                      ║
+# ║  VISÃO PÚBLICA DA LISTA (OCULTA O NOME DO CONVIDADO)         ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 st.markdown(f"<div style='text-align: center; padding: 10px;'> <h1 style='color: #0B2545;'>Casinha {config['nome_casal']}</h1> <p>Escolha um dos itens para o nosso novo lar! 🏠🤍</p> </div>", unsafe_allow_html=True)
@@ -289,8 +288,6 @@ if not itens:
 else:
     for item in itens:
         status_atual = item["status"]
-        
-        # Padronização de leitura do status antigo ou novo
         is_disponivel = status_atual in ["disponivel", "Ainda disponível :("]
 
         with st.container():
@@ -310,8 +307,8 @@ else:
                 if is_disponivel:
                     st.markdown(f"<br><span class='status-badge disponivel'>✨ Ainda disponível :(</span>", unsafe_allow_html=True)
                 else:
-                    nome_quem = item.get("quem", "Alguém")
-                    st.markdown(f"<br><span class='status-badge confirmado'>❤️ Alguém já nos ajudou com esse :) ({nome_quem})</span>", unsafe_allow_html=True)
+                    # Exibe apenas a mensagem genérica na parte pública, ocultando o nome do convidado
+                    st.markdown(f"<br><span class='status-badge confirmado'>❤️ Alguém já nos ajudou com esse :)</span>", unsafe_allow_html=True)
             
             with cols_item[2]:
                 if is_disponivel:
@@ -321,7 +318,7 @@ else:
                     st.markdown("</div>", unsafe_allow_html=True)
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  PAINEL DE CONTROLE (ADMINISTRAÇÃO)                          ║
+# ║  PAINEL DE CONTROLE (EXIBE OS NOMES RESERVADAMENTE)          ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 st.markdown("<br>", unsafe_allow_html=True)
@@ -345,8 +342,9 @@ with admin_panel:
                         
                     with c_admin[0]:
                         texto_item = f"**{item['nome']}** (R$ {item['preco']:.2f})"
+                        # O nome do convidado aparece apenas aqui dentro do painel
                         if item.get("quem"):
-                            texto_item += f"  \n🎁 *Por: {item['quem']}*"
+                            texto_item += f"  \n🎁 *Comprado por: {item['quem']}*"
                         st.markdown(texto_item)
                     
                     with c_admin[1]:
@@ -405,5 +403,5 @@ with admin_panel:
                     dados["config"]["cidade"] = c_cidade.strip().upper()
                     dados["config"]["mp_access_token"] = c_token.strip()
                     salvar_dados(dados)
-                    st.success("Configurações atualizadas!")
+                    st.success("Configurações updated!")
                     st.rerun()
