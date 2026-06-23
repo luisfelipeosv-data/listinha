@@ -2,19 +2,16 @@ import json
 import io
 import re
 import base64
+import os
 import streamlit as st
 import qrcode
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  CONEXÃO COM BANCO DE DADOS EM NUVEM                         ║
+# ║  SISTEMA DE BANCO DE DADOS LOCAL (IMUNIZADO CONTRA REFRESH)  ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 SENHA_ADMIN = "casinha2026"
-
-try:
-    conn = st.connection("kv", type="json")
-except Exception:
-    conn = None
+ARQUIVO_BANCO = "banco_presentes.json"
 
 def _catalogo_padrao() -> dict:
     return {
@@ -29,21 +26,29 @@ def _catalogo_padrao() -> dict:
     }
 
 def carregar_dados() -> dict:
+    # Se o arquivo físico existir no servidor, lê dele
+    if os.path.exists(ARQUIVO_BANCO):
+        try:
+            with open(ARQUIVO_BANCO, "r", encoding="utf-8") as f:
+                dados = json.load(f)
+                st.session_state["db_catalogo"] = dados
+                return dados
+        except Exception:
+            pass
+            
+    # Se não existir ou falhar, usa o padrão/estado atual
     if "db_catalogo" not in st.session_state:
-        if conn:
-            dados = conn.get("catalogo_noivos")
-            if not dados:
-                dados = _catalogo_padrao()
-                conn.set("catalogo_noivos", dados)
-            st.session_state["db_catalogo"] = dados
-        else:
-            st.session_state["db_catalogo"] = _catalogo_padrao()
+        st.session_state["db_catalogo"] = _catalogo_padrao()
+        with open(ARQUIVO_BANCO, "w", encoding="utf-8") as f:
+            json.dump(st.session_state["db_catalogo"], f, ensure_ascii=False, indent=4)
+            
     return st.session_state["db_catalogo"]
 
 def salvar_dados(dados: dict) -> None:
     st.session_state["db_catalogo"] = dados
-    if conn:
-        conn.set("catalogo_noivos", dados)
+    # Grava diretamente no arquivo para persistir mesmo após refresh
+    with open(ARQUIVO_BANCO, "w", encoding="utf-8") as f:
+        json.dump(dados, f, ensure_ascii=False, indent=4)
 
 def gerar_id(nome: str) -> str:
     slug = re.sub(r"[^\w\s-]", "", nome.lower())
@@ -52,7 +57,7 @@ def gerar_id(nome: str) -> str:
     return f"{slug}-{int(time.time())}"
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  QR CODE PIX                                                 ║
+# ║  QR CODE PIX (CORRIGIDO)                                     ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 def _tlv(tag: str, valor: str) -> str:
@@ -91,10 +96,11 @@ def gerar_payload_pix(
     if valor > 0:
         payload_parts.append(_tlv("54", f"{valor:.2f}"))
 
+    # CORREÇÃO CRÍTICA AQUI: Removido o 'city=' incorreto que causava o TypeError
     payload_parts.extend([
         _tlv("58", "BR"),
         _tlv("59", nome_beneficiario[:25].upper()),
-        _tlv("60", city=cidade[:15].upper()),
+        _tlv("60", cidade[:15].upper()),
         _tlv("62", _tlv("05", "***")),
     ])
     payload_sem_crc = "".join(payload_parts) + "6304"
@@ -122,7 +128,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS com correções estritas para o Modal e fontes visíveis
+# Injeção de CSS para garantir contraste e visibilidade
 estilos_css = (
     "<style>"
     "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { "
@@ -156,7 +162,7 @@ estilos_css = (
 st.markdown(estilos_css, unsafe_allow_html=True)
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  MODAL DE PAGAMENTO CORRIGIDO E IMPECÁVEL                    ║
+# ║  MODAL DE PRESENTEAR                                         ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 @st.dialog("🎁 Presentear")
@@ -175,7 +181,6 @@ def modal_presentear(item: dict, config: dict):
         descricao=item["id"][:25]
     )
     
-    # Texto de instruções limpo, ultra legível e sem box branco problemático
     html_instrucoes = (
         "<div style='background-color:#0F172A; padding:16px; border-radius:8px; border: 1px solid #334155; margin-bottom: 20px;'>"
         "<span style='color:#38BDF8; font-weight:bold; font-size:1.05rem; display:block; margin-bottom:6px;'>Passo a passo para pagar:</span>"
@@ -197,7 +202,6 @@ def modal_presentear(item: dict, config: dict):
     st.markdown("<h3 style='color:#F8FAFC; font-size: 1.2rem; margin-bottom:10px;'>Avise os Noivos</h3>", unsafe_allow_html=True)
     
     with st.form(key=f"form_{item['id']}"):
-        # Label em branco puro garantido pelo CSS injetado acima
         nome_convidado = st.text_input("Seu nome completo:", placeholder="Digite seu nome aqui...")
         
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
@@ -228,7 +232,11 @@ st.markdown(cabecalho, unsafe_allow_html=True)
 itens = dados["itens"]
 
 if not itens:
-    vazio = "<div style='text-align:center;'>A lista está vazia!</div>"
+    vazio = (
+        "<div style='text-align:center; padding: 30px; border: 1px dashed #0B2545; border-radius: 8px;'>"
+        "A lista está vazia no momento. Use o painel de controle abaixo para adicionar os presentes!"
+        "</div>"
+    )
     st.markdown(vazio, unsafe_allow_html=True)
 else:
     for item in itens:
