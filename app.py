@@ -67,7 +67,7 @@ def gerar_id(nome: str) -> str:
     return f"{slug}-{int(time.time())}"
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  INTEGRAÇÃO MERCADO PAGO CORRIGIDA (ROTAS ATUALIZADAS)       ║
+# ║  INTEGRAÇÃO MERCADO PAGO                                     ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
@@ -76,6 +76,7 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
         
     token_limpo = access_token.strip()
     url = "https://api.mercadopago.com/checkout/preferences"
+    
     headers = {
         "Authorization": f"Bearer {token_limpo}",
         "Content-Type": "application/json"
@@ -117,7 +118,7 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
     return None
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  QR CODE PIX NATIVO (IMUNIZADO CONTRA ACENTOS)               ║
+# ║  QR CODE PIX NATIVO                                          ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 def _tlv(tag: str, valor: str) -> str:
@@ -135,10 +136,10 @@ def _crc16_ccitt(payload: str) -> str:
             crc &= 0xFFFF
     return f"{crc:04X}"
 
-def gerar_payload_pix(chave: str, nome_beneficiario: str, cidade: str, valor: float, descricao: str) -> str:
+def gerar_payload_pix(chave: str, nome_beneficiario: str, city: str, valor: float, descricao: str) -> str:
     chave_limpa = remover_acentos(chave)
     nome_limpo = remover_acentos(nome_beneficiario[:25]).upper()
-    cidade_limpa = remover_acentos(cidade[:15]).upper()
+    cidade_limpa = remover_acentos(city[:15]).upper()
     desc_limpa = remover_acentos(descricao[:25])
 
     gui = _tlv("00", "BR.GOV.BCB.PIX")
@@ -177,7 +178,7 @@ dados = carregar_dados()
 config = dados["config"]
 st.set_page_config(page_title=f"Lista {config['nome_casal']}", page_icon="🏠", layout="centered")
 
-# Injeção de CSS Customizado (Bordas Inteligentes)
+# Injeção de CSS
 estilos_css = (
     "<style>"
     "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { "
@@ -219,7 +220,7 @@ estilos_css = (
 st.markdown(estilos_css, unsafe_allow_html=True)
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  MODAL DE PRESENTEAR (PIX + CARTÃO DE CRÉDITO)               ║
+# ║  MODAL DE PRESENTEAR                                         ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 @st.dialog("🎁 Presentear")
@@ -229,7 +230,7 @@ def modal_presentear(item: dict, config: dict):
     
     payload_pix = gerar_payload_pix(
         chave=config["chave_pix"], nome_beneficiario=config["nome_beneficiario"],
-        cidade=config["cidade"], valor=item["preco"], descricao=item["id"][:25]
+        city=config["cidade"], valor=item["preco"], descricao=item["id"][:25]
     )
     link_cartao = gerar_link_cartao_mercado_pago(item, config.get("mp_access_token", ""))
     
@@ -256,25 +257,21 @@ def modal_presentear(item: dict, config: dict):
     else:
         st.markdown("<p style='color:#E2E8F0; font-size:0.95rem;'>Clique no botão abaixo para realizar o pagamento parcelado com total segurança no Mercado Pago:</p>", unsafe_allow_html=True)
         st.link_button("💳 Ir para Pagamento em Cartão", link_cartao, use_container_width=True)
-        st.markdown("<small style='color:#94A3B8;'>Nota: Após concluir a transação no cartão, preencha a confirmação abaixo.</small>", unsafe_allow_html=True)
 
     st.markdown("<hr style='border:0; border-top:1px solid #334155; margin: 20px 0;'>", unsafe_allow_html=True)
     st.markdown("<h3 style='color:#F8FAFC; font-size: 1.1rem; margin-bottom:5px;'>Avise os Noivos</h3>", unsafe_allow_html=True)
     
-    # FORMULÁRIO DE CONFIRMAÇÃO (CORRIGIDO PARA ATUALIZAÇÃO AUTOMÁTICA)
     with st.form(key=f"form_{item['id']}"):
         nome_convidado = st.text_input("Seu nome completo:", placeholder="Digite seu nome aqui...")
         if st.form_submit_button("✓ Confirme que enviou o Presente"):
             quem = nome_convidado.strip() or "Anônimo"
             dados_atuais = carregar_dados()
-            
-            # Percorre a lista de itens para achar o presente correto e marcar como ocupado
             for i, it in enumerate(dados_atuais["itens"]):
                 if it["id"] == item["id"]:
+                    # Atualiza exatamente para o novo status mantendo na lista
                     dados_atuais["itens"][i]["status"] = "Alguém já nos ajudou com esse :)"
                     dados_atuais["itens"][i]["quem"] = quem
                     break
-                    
             salvar_dados(dados_atuais)
             st.success("Obrigado! Seu presente foi confirmado com sucesso. 🤍")
             st.rerun()
@@ -292,6 +289,9 @@ if not itens:
 else:
     for item in itens:
         status_atual = item["status"]
+        
+        # Padronização de leitura do status antigo ou novo
+        is_disponivel = status_atual in ["disponivel", "Ainda disponível :("]
 
         with st.container():
             st.markdown('<div class="anuncio-identificador"></div>', unsafe_allow_html=True)
@@ -307,13 +307,14 @@ else:
                 st.markdown(f"<h3 style='margin:0;'>{item['emoji']} {item['nome']}</h3>", unsafe_allow_html=True)
                 st.markdown(f"<span style='font-weight:bold; font-size:1.2rem; color:#0B2545;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
                 
-                if status_atual in ["disponivel", "Ainda disponível :("]:
+                if is_disponivel:
                     st.markdown(f"<br><span class='status-badge disponivel'>✨ Ainda disponível :(</span>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<br><span class='status-badge confirmado'>❤️ Alguém já nos ajudou com esse :)</span>", unsafe_allow_html=True)
+                    nome_quem = item.get("quem", "Alguém")
+                    st.markdown(f"<br><span class='status-badge confirmado'>❤️ Alguém já nos ajudou com esse :) ({nome_quem})</span>", unsafe_allow_html=True)
             
             with cols_item[2]:
-                if status_atual in ["disponivel", "Ainda disponível :("]:
+                if is_disponivel:
                     st.markdown("<div style='padding-top:10px;'>", unsafe_allow_html=True)
                     if st.button("Presentear", key=f"btn_{item['id']}", use_container_width=True):
                         modal_presentear(item, config)
@@ -356,7 +357,7 @@ with admin_panel:
                             
                     with c_admin[2]:
                         opcoes = ["Ainda disponível :(", "Alguém já nos ajudou com esse :)"]
-                        i_padrao = opcoes.index(status_ajustado) if status_ajustado in opcoes else 0
+                        i_padrao = opcoes.index(status_ajustado)
                         novo = st.selectbox("Status:", opcoes, index=i_padrao, key=f"s_{item['id']}")
                         
                         if novo != item["status"]:
