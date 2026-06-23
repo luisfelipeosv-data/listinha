@@ -72,12 +72,10 @@ def gerar_id(nome: str) -> str:
 
 def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
     if not access_token or access_token.strip() == "":
-        st.warning("⚠️ O Token do Mercado Pago está vazio ou não foi carregado corretamente.")
         return None
         
     token_limpo = access_token.strip()
     url = "https://api.mercadopago.com/checkout/preferences"
-    
     headers = {
         "Authorization": f"Bearer {token_limpo}",
         "Content-Type": "application/json"
@@ -85,7 +83,6 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
     
     titulo_produto = remover_acentos(f"Presente: {item['emoji']} {item['nome']}")
     
-    # Configura o payload exigido com as URLs de retorno obrigatórias
     payload = {
         "items": [
             {
@@ -114,10 +111,8 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
         response = requests.post(url, headers=headers, json=payload, timeout=10)
         if response.status_code in [200, 201]:
             return response.json().get("init_point")
-        else:
-            st.error(f"❌ Erro do Mercado Pago (Status {response.status_code}): {response.text}")
-    except Exception as e:
-        st.error(f"❌ Erro de conexão: {e}")
+    except Exception:
+        pass
         
     return None
 
@@ -266,16 +261,20 @@ def modal_presentear(item: dict, config: dict):
     st.markdown("<hr style='border:0; border-top:1px solid #334155; margin: 20px 0;'>", unsafe_allow_html=True)
     st.markdown("<h3 style='color:#F8FAFC; font-size: 1.1rem; margin-bottom:5px;'>Avise os Noivos</h3>", unsafe_allow_html=True)
     
+    # FORMULÁRIO DE CONFIRMAÇÃO (CORRIGIDO PARA ATUALIZAÇÃO AUTOMÁTICA)
     with st.form(key=f"form_{item['id']}"):
         nome_convidado = st.text_input("Seu nome completo:", placeholder="Digite seu nome aqui...")
         if st.form_submit_button("✓ Confirme que enviou o Presente"):
             quem = nome_convidado.strip() or "Anônimo"
             dados_atuais = carregar_dados()
+            
+            # Percorre a lista de itens para achar o presente correto e marcar como ocupado
             for i, it in enumerate(dados_atuais["itens"]):
                 if it["id"] == item["id"]:
                     dados_atuais["itens"][i]["status"] = "Alguém já nos ajudou com esse :)"
                     dados_atuais["itens"][i]["quem"] = quem
                     break
+                    
             salvar_dados(dados_atuais)
             st.success("Obrigado! Seu presente foi confirmado com sucesso. 🤍")
             st.rerun()
@@ -293,8 +292,6 @@ if not itens:
 else:
     for item in itens:
         status_atual = item["status"]
-        if status_atual == "disponivel":
-            status_atual = "Ainda disponível :("
 
         with st.container():
             st.markdown('<div class="anuncio-identificador"></div>', unsafe_allow_html=True)
@@ -310,13 +307,13 @@ else:
                 st.markdown(f"<h3 style='margin:0;'>{item['emoji']} {item['nome']}</h3>", unsafe_allow_html=True)
                 st.markdown(f"<span style='font-weight:bold; font-size:1.2rem; color:#0B2545;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
                 
-                if status_atual == "Ainda disponível :(":
-                    st.markdown(f"<br><span class='status-badge disponivel'>✨ {status_atual}</span>", unsafe_allow_html=True)
+                if status_atual in ["disponivel", "Ainda disponível :("]:
+                    st.markdown(f"<br><span class='status-badge disponivel'>✨ Ainda disponível :(</span>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"<br><span class='status-badge confirmado'>❤️ Alguém já nos ajudou com esse :)</span>", unsafe_allow_html=True)
             
             with cols_item[2]:
-                if status_atual == "Ainda disponível :(":
+                if status_atual in ["disponivel", "Ainda disponível :("]:
                     st.markdown("<div style='padding-top:10px;'>", unsafe_allow_html=True)
                     if st.button("Presentear", key=f"btn_{item['id']}", use_container_width=True):
                         modal_presentear(item, config)
@@ -343,7 +340,7 @@ with admin_panel:
             else:
                 for idx, item in enumerate(itens):
                     c_admin = st.columns([2, 1, 2])
-                    status_ajustado = "Ainda disponível :(" if item["status"] == "disponivel" else item["status"]
+                    status_ajustado = "Ainda disponível :(" if item["status"] in ["disponivel", "Ainda disponível :("] else "Alguém já nos ajudou com esse :)"
                         
                     with c_admin[0]:
                         texto_item = f"**{item['nome']}** (R$ {item['preco']:.2f})"
@@ -398,7 +395,7 @@ with admin_panel:
                 c_chave = st.text_input("Chave Pix:", value=config["chave_pix"])
                 c_nome = st.text_input("Beneficiário:", value=config["nome_beneficiario"])
                 c_cidade = st.text_input("Cidade:", value=config["cidade"])
-                c_token = st.text_input("Mercado Pago Access Token (Opcional):", value=config.get("mp_access_token", ""), type="password", help="Cole o seu Access Token de produção do Mercado Pago.")
+                c_token = st.text_input("Mercado Pago Access Token (Opcional):", value=config.get("mp_access_token", ""), type="password")
                 
                 if st.form_submit_button("Salvar Config."):
                     dados["config"]["nome_casal"] = c_casal
