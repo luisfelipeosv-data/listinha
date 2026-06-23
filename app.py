@@ -96,7 +96,7 @@ def gerar_payload_pix(
     payload_parts.extend([
         _tlv("58", "BR"),
         _tlv("59", nome_beneficiario[:25].upper()),
-        _tlv("60", city=cidade[:15].upper() if False else cidade[:15].upper()), 
+        _tlv("60", cidade[:15].upper()), 
         _tlv("62", _tlv("05", "***")),
     ])
     payload_sem_crc = "".join(payload_parts) + "6304"
@@ -124,7 +124,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Injeção de CSS Customizado (Bordas Fancy e Caixas de Anúncios)
+# Injeção de CSS Customizado corrigido para envelopar os anúncios corretamente
 estilos_css = (
     "<style>"
     "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { "
@@ -132,34 +132,33 @@ estilos_css = (
     ".stApp { background-color: #F4F7FA !important; color: #2D3748 !important; }"
     "#MainMenu, footer, header { visibility: hidden; }"
     
-    # Painel de Controle
+    # Painel do Casal (Sanfona)
     ".stExpander { border: 2px solid #0B2545 !important; "
     "border-radius: 12px !important; background-color: #ffffff !important; "
-    "margin-top: 20px !important; }"
+    "margin-top: 40px !important; }"
     ".stExpander summary p { color: #0B2545 !important; font-weight: 700 !important; }"
     "div[data-testid='stTabs'] button { color: #4A5568 !important; font-weight: 600 !important; }"
     "div[data-testid='stTabs'] button[aria-selected='true'] { "
     "color: #0B2545 !important; border-bottom: 3px solid #0B2545 !important; }"
     
-    # Borda Fancy ao redor de cada anúncio individual de presente
-    ".anuncio-container { "
+    # Borda elegante corrigida envolvendo TODO o conteúdo do anúncio (st.container nativo)
+    "div[data-testid='stVerticalBlockBorderWrapper'] { "
     "background-color: #ffffff !important; "
     "border: 2px solid #E2E8F0 !important; "
     "border-radius: 16px !important; "
     "padding: 20px !important; "
-    "margin-bottom: 20px !important; "
-    "box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important; "
-    "transition: transform 0.2s ease, border-color 0.2s ease !important; }"
-    ".anuncio-container:hover { "
-    "border-color: #0B2545 !important; "
-    "transform: translateY(-2px); }"
+    "margin-bottom: 15px !important; "
+    "box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04) !important; "
+    "transition: border-color 0.2s ease, transform 0.2s ease !important; }"
+    "div[data-testid='stVerticalBlockBorderWrapper']:hover { "
+    "border-color: #0B2545 !important; }"
     
     "div.stButton > button, div.stFormSubmitButton > button { "
     "background-color: #0B2545 !important; color: #ffffff !important; "
     "border-radius: 8px !important; font-weight: 600 !important; width: 100% !important; }"
     "label p { color: #0B2545 !important; font-weight: 600 !important; }"
     
-    # Badges de Status
+    # Estilização Refinada dos Status Badges
     ".status-badge { padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; "
     "font-weight: 700; display: inline-block; text-align: center; }"
     ".disponivel { background-color: #EBF8FF !important; color: #2B6CB0 !important; border: 1px solid #BEE3F8 !important; }"
@@ -255,34 +254,30 @@ else:
         if status_atual == "disponivel":
             status_atual = "Ainda disponível :("
 
-        # Renderização do anúncio envelopado em uma caixinha com borda elegante
-        st.markdown('<div class="anuncio-container">', unsafe_allow_html=True)
-        cols_item = st.columns([1.1, 2, 1])
-        
-        with cols_item[0]:
-            if item.get("foto"):
-                img_html = f"<div class='img-container'><img src='data:image/jpeg;base64,{item['foto']}' width='100%'/></div>"
-                st.markdown(img_html, unsafe_allow_html=True)
-            else:
-                st.markdown("<div style='font-size:2.5rem;text-align:center;padding-top:10px;'>🎁</div>", unsafe_allow_html=True)
-                
-        with cols_item[1]:
-            st.markdown(f"<h3 style='margin:0;'>{item['emoji']} {item['nome']}</h3>", unsafe_allow_html=True)
-            st.markdown(f"<span style='font-weight:bold; font-size:1.2rem; color:#0B2545;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
+        # O st.container(border=True) agora segura TODO o conteúdo de forma segura e elegante
+        with st.container(border=True):
+            cols_item = st.columns([1.1, 2, 1])
             
-            if status_atual == "Ainda disponível :(":
-                st.markdown(f"<br><span class='status-badge disponivel'>✨ {status_atual}</span>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<br><span class='status-badge confirmado'>❤️ Alguém já nos ajudou com esse :)</span>", unsafe_allow_html=True)
-        
-        with cols_item[2]:
-            if status_atual == "Ainda disponível :(":
-                st.markdown("<div style='padding-top:15px;'>", unsafe_allow_html=True)
-                if st.button("Presentear", key=f"btn_{item['id']}", use_container_width=True):
-                    modal_presentear(item, config)
-                st.markdown("</div>", unsafe_allow_html=True)
+            with cols_item[0]:
+                if item.get("foto"):
+                    img_html = f"<div class='img-container'><img src='data:image/jpeg;base64,{item['foto']}' width='100%'/></div>"
+                    st.markdown(img_html, unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='font-size:2.5rem;text-align:center;'>🎁</div>", unsafe_allow_html=True)
+                    
+            with cols_item[1]:
+                st.markdown(f"<h3 style='margin:0;'>{item['emoji']} {item['nome']}</h3>", unsafe_allow_html=True)
+                st.markdown(f"<span style='font-weight:bold; font-size:1.2rem; color:#0B2545;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
                 
-        st.markdown('</div>', unsafe_allow_html=True)
+                if status_atual == "Ainda disponível :(":
+                    st.markdown(f"<br><span class='status-badge disponivel'>✨ {status_atual}</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<br><span class='status-badge confirmado'>❤️ Alguém já nos ajudou com esse :)</span>", unsafe_allow_html=True)
+            
+            with cols_item[2]:
+                if status_atual == "Ainda disponível :(":
+                    if st.button("Presentear", key=f"btn_{item['id']}", use_container_width=True):
+                        modal_presentear(item, config)
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║  PAINEL DE CONTROLE                                          ║
