@@ -75,11 +75,9 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
         st.warning("⚠️ O Token do Mercado Pago está vazio ou não foi carregado corretamente.")
         return None
         
-    # .strip() limpa espaços ou quebras de linha invisíveis que causam Erro 404
     token_limpo = access_token.strip()
-    
-    # Rota correta e atualizada da API do Mercado Pago para Checkout Pro
     url = "https://api.mercadopago.com/checkout/preferences"
+    
     headers = {
         "Authorization": f"Bearer {token_limpo}",
         "Content-Type": "application/json"
@@ -87,6 +85,7 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
     
     titulo_produto = remover_acentos(f"Presente: {item['emoji']} {item['nome']}")
     
+    # Configura o payload exigido com as URLs de retorno obrigatórias
     payload = {
         "items": [
             {
@@ -103,6 +102,11 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
             ],
             "installments": 12           
         },
+        "back_urls": {
+            "success": "https://lista-sls.streamlit.app",
+            "failure": "https://lista-sls.streamlit.app",
+            "pending": "https://lista-sls.streamlit.app"
+        },
         "auto_return": "approved"
     }
     
@@ -111,7 +115,6 @@ def gerar_link_cartao_mercado_pago(item: dict, access_token: str) -> str:
         if response.status_code in [200, 201]:
             return response.json().get("init_point")
         else:
-            # Mantém a exibição do erro exato caso ocorra outra rejeição interna do MP
             st.error(f"❌ Erro do Mercado Pago (Status {response.status_code}): {response.text}")
     except Exception as e:
         st.error(f"❌ Erro de conexão: {e}")
