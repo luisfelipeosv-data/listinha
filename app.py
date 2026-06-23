@@ -124,7 +124,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Injeção de CSS customizado
+# Injeção de CSS Customizado (Bordas Fancy e Status Otimizados)
 estilos_css = (
     "<style>"
     "h1, h2, h3, h4, h5, h6, p, label, .stMarkdown p { "
@@ -138,17 +138,32 @@ estilos_css = (
     "div[data-testid='stTabs'] button { color: #4A5568 !important; font-weight: 600 !important; }"
     "div[data-testid='stTabs'] button[aria-selected='true'] { "
     "color: #0B2545 !important; border-bottom: 3px solid #0B2545 !important; }"
+    
+    # Borda Fancy (Gradient Border elegante usando pseudo-elemento para os blocos de presentes)
     "div[data-testid='stVerticalBlockBorderWrapper'] { "
-    "border-radius: 16px !important; border: 1px solid #E2E8F0 !important; "
-    "background-color: #ffffff !important; padding: 24px !important; }"
+    "position: relative !important; "
+    "background: #ffffff !important; "
+    "border-radius: 16px !important; "
+    "padding: 24px !important; "
+    "border: 1px solid transparent !important; "
+    "box-shadow: 0 4px 15px rgba(0,0,0,0.04) !important; "
+    "background-clip: padding-box !important; }"
+    "div[data-testid='stVerticalBlockBorderWrapper']::before { "
+    "content: '' !important; position: absolute !important; top: 0; right: 0; bottom: 0; left: 0 !important; "
+    "z-index: -1 !important; margin: -1px !important; border-radius: 16px !important; "
+    "background: linear-gradient(135deg, #0B2545 0%, #134074 50%, #8DA9C4 100%) !important; }"
+    
     "div.stButton > button, div.stFormSubmitButton > button { "
     "background-color: #0B2545 !important; color: #ffffff !important; "
     "border-radius: 8px !important; font-weight: 600 !important; width: 100% !important; }"
     "label p { color: #0B2545 !important; font-weight: 600 !important; }"
-    ".status-badge { padding: 6px 14px; border-radius: 30px; font-size: 0.75rem; "
-    "font-weight: 700; display: inline-block; }"
-    ".disponivel { background-color: #EBF8FF; color: #2B6CB0; }"
-    ".confirmado { background-color: #C6F6D5; color: #22543D; }"
+    
+    # Estilização Refinada dos Badges de Status
+    ".status-badge { padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; "
+    "font-weight: 700; display: inline-block; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }"
+    ".disponivel { background-color: #EBF8FF !important; color: #2B6CB0 !important; border: 1px solid #BEE3F8 !important; }"
+    ".confirmado { background-color: #F0FDF4 !important; color: #166534 !important; border: 1px solid #BBF7D0 !important; }"
+    
     ".img-container img { border-radius: 12px !important; object-fit: cover !important; }"
     "div[role='dialog'] label p { color: #ffffff !important; font-size: 1.05rem !important; font-weight: 700 !important; }"
     "div[role='dialog'] input { color: #ffffff !important; background-color: #1E293B !important; border: 1px solid #475569 !important; }"
@@ -205,7 +220,6 @@ def modal_presentear(item: dict, config: dict):
             dados_atuais = carregar_dados()
             for i, it in enumerate(dados_atuais["itens"]):
                 if it["id"] == item["id"]:
-                    # ATUALIZAÇÃO AUTOMÁTICA: Passa direto para o status de sucesso
                     dados_atuais["itens"][i]["status"] = "Alguém já nos ajudou com esse :)"
                     dados_atuais["itens"][i]["quem"] = quem
                     break
@@ -236,7 +250,6 @@ if not itens:
     st.markdown(vazio, unsafe_allow_html=True)
 else:
     for item in itens:
-        # Garante retrocompatibilidade se o status antigo "disponivel" ainda estiver salvo
         status_atual = item["status"]
         if status_atual == "disponivel":
             status_atual = "Ainda disponível :("
@@ -253,12 +266,13 @@ else:
                     
             with cols_item[1]:
                 st.markdown(f"<h3>{item['emoji']} {item['nome']}</h3>", unsafe_allow_html=True)
-                st.markdown(f"<span style='font-weight:bold;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
+                st.markdown(f"<span style='font-weight:bold; font-size:1.15rem; color:#134074;'>R$ {item['preco']:.2f}</span>", unsafe_allow_html=True)
                 
+                # Exibição Pública Segura: Oculta o nome de quem comprou mantendo segredo
                 if status_atual == "Ainda disponível :(":
-                    st.markdown(f"<br><span class='status-badge disponivel'>{status_atual}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<br><span class='status-badge disponivel'>✨ {status_atual}</span>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<br><span class='status-badge confirmado'>De: {item['quem']} 🤍</span>", unsafe_allow_html=True)
+                    st.markdown(f"<br><span class='status-badge confirmado'>❤️ Alguém já nos ajudou com esse :)</span>", unsafe_allow_html=True)
             
             with cols_item[2]:
                 if status_atual == "Ainda disponível :(":
@@ -292,7 +306,7 @@ with admin_panel:
                         status_ajustado = "Ainda disponível :("
                         
                     with c_admin[0]:
-                        # EXIBIÇÃO DO COMPRADOR NO PAINEL: Mostra quem deu o presente diretamente
+                        # O nome do padrinho/madrinha aparece somente aqui, protegido por senha
                         texto_item = f"**{item['nome']}** (R$ {item['preco']:.2f})"
                         if item.get("quem"):
                             texto_item += f"  \n🎁 *Presenteado por: {item['quem']}*"
@@ -319,7 +333,7 @@ with admin_panel:
         with tab2:
             with st.form(key="form_add", clear_on_submit=True):
                 n_nome = st.text_input("Nome:")
-                n_preco = n_preco = st.number_input("Preço:", min_value=1.0, value=150.0)
+                n_preco = st.number_input("Preço:", min_value=1.0, value=150.0)
                 n_emoji = st.text_input("Emoji:", value="🎁")
                 n_desc = st.text_input("Descrição:")
                 foto = st.file_uploader("Foto:", type=["jpg", "png"])
