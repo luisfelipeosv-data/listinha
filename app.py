@@ -7,13 +7,17 @@ import streamlit as st
 import qrcode
 import requests
 import unicodedata
+import time
 
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  SISTEMA DE BANCO DE DADOS LOCAL (IMUNIZADO CONTRA REFRESH)  ║
+# ║  SISTEMA DE BANCO DE DADOS EM NUVEM (IMUNIZADO E HOSPEDADO)  ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 SENHA_ADMIN = "casinha2026"
-ARQUIVO_BANCO = "banco_presentes.json"
+
+# Chaves do JSONBin inseridas com sucesso 🔒
+JSONBIN_API_KEY = "$2a$10$iPhLomSeCs5qbURaQEzg2.N0VeVf/z5ZjU/I/hCorzFlnJPPDt./O"
+JSONBIN_BIN_ID = "6a3bfc12f5f4af5e2929ad37"
 
 def _catalogo_padrao() -> dict:
     return {
@@ -29,28 +33,44 @@ def _catalogo_padrao() -> dict:
     }
 
 def carregar_dados() -> dict:
-    if os.path.exists(ARQUIVO_BANCO):
-        try:
-            with open(ARQUIVO_BANCO, "r", encoding="utf-8") as f:
-                dados = json.load(f)
+    if "db_catalogo" in st.session_state:
+        return st.session_state["db_catalogo"]
+        
+    url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}/latest"
+    headers = {
+        "X-Master-Key": JSONBIN_API_KEY,
+        "X-Bin-Meta": "false"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            dados = response.json()
+            if "config" in dados:
                 if "mp_access_token" not in dados["config"]:
                     dados["config"]["mp_access_token"] = ""
                 st.session_state["db_catalogo"] = dados
                 return dados
-        except Exception:
-            pass
+    except Exception:
+        if "db_catalogo" in st.session_state:
+            return st.session_state["db_catalogo"]
             
-    if "db_catalogo" not in st.session_state:
-        st.session_state["db_catalogo"] = _catalogo_padrao()
-        with open(ARQUIVO_BANCO, "w", encoding="utf-8") as f:
-            json.dump(st.session_state["db_catalogo"], f, ensure_ascii=False, indent=4)
-            
+    st.session_state["db_catalogo"] = _catalogo_padrao()
     return st.session_state["db_catalogo"]
 
 def salvar_dados(dados: dict) -> None:
     st.session_state["db_catalogo"] = dados
-    with open(ARQUIVO_BANCO, "w", encoding="utf-8") as f:
-        json.dump(dados, f, ensure_ascii=False, indent=4)
+    
+    url = f"https://api.jsonbin.io/v3/b/{JSONBIN_BIN_ID}"
+    headers = {
+        "X-Master-Key": JSONBIN_API_KEY,
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        requests.put(url, headers=headers, json=dados, timeout=10)
+    except Exception as e:
+        st.error(f"Erro de conexão ao salvar na nuvem: {e}")
 
 def remover_acentos(texto: str) -> str:
     """ Remove acentos e caracteres especiais para blindar o Pix e IDs """
@@ -63,7 +83,6 @@ def gerar_id(nome: str) -> str:
     nome_limpo = remover_acentos(nome.lower())
     slug = re.sub(r"[^\w\s-]", "", nome_limpo)
     slug = re.sub(r"[\s_]+", "-", slug).strip("-")
-    import time
     return f"{slug}-{int(time.time())}"
 
 # ╔══════════════════════════════════════════════════════════════╗
@@ -159,7 +178,7 @@ def gerar_payload_pix(chave: str, nome_beneficiario: str, city: str, valor: floa
     payload_parts.extend([
         _tlv("58", "BR"),
         _tlv("59", nome_limpo),
-        _tlv("60", cidade_limpa), 
+        _tlv("60", city_limpa), 
         _tlv("62", _tlv("05", "***")),
     ])
     payload_sem_crc = "".join(payload_parts) + "6304"
@@ -185,34 +204,29 @@ estilos_css = (
     "font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important; }"
     ".stApp { background-color: #F4F7FA !important; color: #2D3748 !important; }"
     "#MainMenu, footer, header { visibility: hidden; }"
-    
-    ".stExpander { border: 2px solid #0B2545 !important; "
+    " .stExpander { border: 2px solid #0B2545 !important; "
     "border-radius: 12px !important; background-color: #ffffff !important; "
     "margin-top: 40px !important; }"
     ".stExpander summary p { color: #0B2545 !important; font-weight: 700 !important; }"
     "div[data-testid='stTabs'] button { color: #4A5568 !important; font-weight: 600 !important; }"
     "div[data-testid='stTabs'] button[aria-selected='true'] { "
     "color: #0B2545 !important; border-bottom: 3px solid #0B2545 !important; }"
-    
-    "div[data-testid='stVerticalBlock']:has(> div.element-container div.anuncio-identificador) { "
+    " div[data-testid='stVerticalBlock']:has(> div.element-container div.anuncio-identificador) { "
     "background-color: #ffffff !important; "
     "border: 2px solid #0B2545 !important; "
     "border-radius: 16px !important; "
     "padding: 22px !important; "
     "margin-bottom: 25px !important; "
     "box-shadow: 0 10px 15px -3px rgba(11, 37, 69, 0.06) !important; }"
-    
-    "div.stButton > button, div.stFormSubmitButton > button { "
+    " div.stButton > button, div.stFormSubmitButton > button { "
     "background-color: #0B2545 !important; color: #ffffff !important; "
     "border-radius: 8px !important; font-weight: 600 !important; width: 100% !important; }"
     "label p { color: #0B2545 !important; font-weight: 600 !important; }"
-    
-    ".status-badge { padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; "
+    " .status-badge { padding: 6px 16px; border-radius: 30px; font-size: 0.85rem; "
     "font-weight: 700; display: inline-block; text-align: center; }"
     ".disponivel { background-color: #EBF8FF !important; color: #2B6CB0 !important; border: 1px solid #BEE3F8 !important; }"
     ".confirmado { background-color: #F0FDF4 !important; color: #166534 !important; border: 1px solid #BBF7D0 !important; }"
-    
-    ".img-container img { border-radius: 12px !important; object-fit: cover !important; }"
+    " .img-container img { border-radius: 12px !important; object-fit: cover !important; }"
     "div[role='dialog'] label p { color: #ffffff !important; font-size: 1.05rem !important; font-weight: 700 !important; }"
     "div[role='dialog'] input { color: #ffffff !important; background-color: #1E293B !important; border: 1px solid #475569 !important; }"
     "</style>"
@@ -307,7 +321,6 @@ else:
                 if is_disponivel:
                     st.markdown(f"<br><span class='status-badge disponivel'>✨ Ainda disponível :(</span>", unsafe_allow_html=True)
                 else:
-                    # Exibe apenas a mensagem genérica na parte pública, ocultando o nome do convidado
                     st.markdown(f"<br><span class='status-badge confirmado'>❤️ Alguém já nos ajudou com esse :)</span>", unsafe_allow_html=True)
             
             with cols_item[2]:
@@ -342,7 +355,6 @@ with admin_panel:
                         
                     with c_admin[0]:
                         texto_item = f"**{item['nome']}** (R$ {item['preco']:.2f})"
-                        # O nome do convidado aparece apenas aqui dentro do painel
                         if item.get("quem"):
                             texto_item += f"  \n🎁 *Comprado por: {item['quem']}*"
                         st.markdown(texto_item)
