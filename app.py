@@ -15,7 +15,7 @@ import time
 
 SENHA_ADMIN = "casinha2026"
 
-# Chaves do JSONBin inseridas com sucesso 🔒
+# Chaves do JSONBin 🔒
 JSONBIN_API_KEY = "$2a$10$iPhLomSeCs5qbURaQEzg2.N0VeVf/z5ZjU/I/hCorzFlnJPPDt./O"
 JSONBIN_BIN_ID = "6a3bfc12f5f4af5e2929ad37"
 
@@ -178,8 +178,7 @@ def gerar_payload_pix(chave: str, nome_beneficiario: str, city: str, valor: floa
     payload_parts.extend([
         _tlv("58", "BR"),
         _tlv("59", nome_limpo),
-        _tlv("60", city_limpa), 
-        _tlv("62", _tlv("05", "***")),
+        _tlv("60", cidade_limpa),  # 🚀 Linha corrigida aqui!
     ])
     payload_sem_crc = "".join(payload_parts) + "6304"
     return payload_sem_crc + _crc16_ccitt(payload_sem_crc)
